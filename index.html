@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
+  <title>Cute SMS Messenger</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#f8e1ee" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="SMS" />
+</head>
+<body>
+
+  <div class="phone-container" id="phone-app">
+    <div class="overlay-backdrop" id="backdrop" onclick="closeDrawer()"></div>
+
+    <!-- REACTION BAR -->
+    <div class="reaction-picker" id="reaction-picker">
+      <span onclick="addReaction('❤️')">❤️</span>
+      <span onclick="addReaction('😂')">😂</span>
+      <span onclick="addReaction('😮')">😮</span>
+      <span onclick="addReaction('😢')">😢</span>
+      <span onclick="addReaction('👍')">👍</span>
+      <span onclick="addReaction('😡')">😡</span>
+    </div>
+
+    <!-- 1. SLIDING CONTACTS DRAWER -->
+    <div class="drawer" id="drawer">
+      <div class="drawer-header">
+        <input type="text" class="search-bar" id="search-contacts" placeholder="✦ Search contacts..." oninput="renderContacts()" />
+      </div>
+      <div class="contact-list" id="contact-list"></div>
+      <div style="padding: 10px;"><button class="save-btn" style="width:100%" onclick="addNewContact()">+ Add New Contact</button></div>
+      
+      <div class="user-profile-bar">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div class="pfp-circle" id="user-pfp-display">✦</div>
+          <span id="user-name-display" style="font-weight:bold; font-size:14px;">User</span>
+        </div>
+        <button class="icon-btn" onclick="openUserModal()">⚙︎</button>
+      </div>
+    </div>
+
+    <!-- 2. TOP HEADER -->
+    <div class="header">
+      <div class="header-left">
+        <button class="icon-btn" onclick="openDrawer()">❮</button>
+        
+        <div class="contact-profile-trigger" onclick="toggleQuickEdit(event)">
+          <div class="pfp-circle" id="header-pfp">🤖</div>
+          <div class="contact-names">
+            <span class="contact-display-name" id="header-nickname">Pookie❤️</span>
+            <span class="contact-orig-name" id="header-origname">(Jacob)</span>
+            <div class="rel-meter-container" title="Relationship Warmth">
+              <div class="rel-meter-fill" id="rel-meter-bar"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="quick-edit-pop" id="quick-edit-pop">
+          <button class="icon-btn" onclick="openQuickEditModal()" title="Edit PFP & Nickname">✎</button>
+          <button class="icon-btn" onclick="openContactSettingsModal()" title="Edit AI Persona">⚙︎</button>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <span id="rel-meter-percent" style="font-size:11px; font-weight:bold; color:var(--text-pale)">0%</span>
+        <button class="icon-btn" onclick="openGlobalSettingsModal()">⋮</button>
+      </div>
+    </div>
+
+    <!-- 3. CHAT MESSAGES CONTAINER -->
+    <div class="chat-box" id="chat-box"></div>
+
+    <!-- 4. BOTTOM CONTROLS (INPUT BAR & STICKER DRAWER) -->
+    <div class="bottom-wrapper" id="bottom-wrapper">
+      <div class="input-area" id="input-bar">
+        <button class="icon-btn" onclick="toggleStickerDrawer()" title="Stickers">🙂</button>
+        <input type="text" id="user-input" placeholder="Message... 🌸" onkeydown="if(event.key === 'Enter') sendMessage()" />
+        <button class="send-btn" onclick="sendMessage()">✦</button>
+      </div>
+
+      <!-- STICKER DRAWER -->
+      <div class="sticker-drawer" id="sticker-drawer">
+        <div class="sticker-toolbar">
+          <span style="font-size:12px; font-weight:bold; color:var(--text-main);">Your Stickers 🎨 (Hold to delete)</span>
+          <button class="icon-btn" onclick="openAddStickerModal()" title="Add Custom Sticker">🖌️</button>
+        </div>
+        <div class="sticker-grid" id="sticker-grid"></div>
+      </div>
+    </div>
+
+    <!-- MODAL: DELETE STICKER -->
+    <div class="modal" id="delete-sticker-modal">
+      <div class="modal-content">
+        <h3>Delete Sticker 🗑️</h3>
+        <p style="font-size:13px; color:var(--text-main);" id="delete-sticker-text">Are you sure you want to delete this sticker?</p>
+        <button class="danger-btn" onclick="confirmDeleteSticker()">Delete Sticker</button>
+        <button class="close-btn" onclick="closeModal('delete-sticker-modal')">Cancel</button>
+      </div>
+    </div>
+
+    <!-- MODAL: ADD STICKER -->
+    <div class="modal" id="add-sticker-modal">
+      <div class="modal-content">
+        <h3>Create Sticker 🎨</h3>
+        <label>Upload PNG Image</label>
+        <input type="file" accept="image/*" class="file-input" onchange="handleStickerUpload(event)" />
+        <label>Name / Title</label>
+        <input type="text" id="stk-name" placeholder="e.g. Apologizing Puppy" />
+        <label>Vibe & Feelings Description</label>
+        <textarea id="stk-desc" placeholder="e.g. A cute puppy looking apologetic with big watery eyes."></textarea>
+        <button class="save-btn" onclick="saveNewSticker()">Save Sticker</button>
+        <button class="close-btn" onclick="closeModal('add-sticker-modal')">Cancel</button>
+      </div>
+    </div>
+
+    <!-- MODAL: DELETE MESSAGE -->
+    <div class="modal" id="delete-msg-modal">
+      <div class="modal-content">
+        <h3>Delete Message 🗑️</h3>
+        <p style="font-size:13px; color:var(--text-main);">Are you sure you want to delete this message?</p>
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--text-main);">
+          <input type="checkbox" id="delete-following-chk" /> Delete all following messages too
+        </label>
+        <button class="danger-btn" onclick="confirmDeleteMessage()">Delete</button>
+        <button class="close-btn" onclick="closeModal('delete-msg-modal')">Cancel</button>
+      </div>
+    </div>
+
+    <!-- MODAL: DELETE CONTACT -->
+    <div class="modal" id="delete-contact-modal">
+      <div class="modal-content">
+        <h3>Delete Contact 🗑️</h3>
+        <p style="font-size:13px; color:var(--text-main);" id="delete-contact-text">Are you sure you want to delete this contact?</p>
+        <button class="danger-btn" onclick="confirmDeleteContact()">Delete Contact</button>
+        <button class="close-btn" onclick="closeModal('delete-contact-modal')">Cancel</button>
+      </div>
+    </div>
+
+    <!-- MODAL: QUICK EDIT (PFP & NICKNAME) -->
+    <div class="modal" id="quick-edit-modal">
+      <div class="modal-content">
+        <h3>Edit Quick Info ❀</h3>
+        <label>PFP (Upload Image or type Emoji)</label>
+        <input type="file" accept="image/*" class="file-input" onchange="handlePfpUpload(event, 'qe-pfp')" />
+        <input type="text" id="qe-pfp" placeholder="Emoji or Image Data..." />
+        <label>Nickname</label>
+        <input type="text" id="qe-nickname" placeholder="e.g. pookie❤️" />
+        <button class="save-btn" onclick="saveQuickEdit()">Save</button>
+        <button class="close-btn" onclick="closeModal('quick-edit-modal')">Cancel</button>
+      </div>
+    </div>
+
+    <!-- MODAL: CONTACT PERSONA SETTINGS -->
+    <div class="modal" id="contact-settings-modal">
+      <div class="modal-content">
+        <h3>Character Settings ⚙︎</h3>
+        <label>Original Name</label>
+        <input type="text" id="cs-origname" />
+        <label>Personality Traits</label>
+        <textarea id="cs-personality" placeholder="e.g. Grumpy, gets irritated easily, dramatic"></textarea>
+        <label>Manner of Texting (Quirks)</label>
+        <textarea id="cs-quirks" placeholder="e.g. Texts in single big paragraphs, no capital letters"></textarea>
+
+        <label class="switch-label">
+          <span>Enable Callback Memories / Nostalgia</span>
+          <input type="checkbox" id="cs-memory-toggle" />
+        </label>
+        <label>Relationship / Shared History Context</label>
+        <textarea id="cs-rel-context" placeholder="e.g. Met in real life in high school. Always got lost together."></textarea>
+
+        <label>Backstory</label>
+        <textarea id="cs-backstory"></textarea>
+        <label>Physical Appearance</label>
+        <textarea id="cs-appearance" placeholder="e.g. Black hair, tall, wears hoodies"></textarea>
+        <button class="save-btn" onclick="saveContactSettings()">Save Persona</button>
+        <button class="close-btn" onclick="closeModal('contact-settings-modal')">Cancel</button>
+      </div>
+    </div>
+
+    <!-- MODAL: USER PROFILE -->
+    <div class="modal" id="user-modal">
+      <div class="modal-content">
+        <h3>User Profile Settings 👤</h3>
+        <label>Your Name</label>
+        <input type="text" id="usr-name" placeholder="Sally" />
+        <label>Nicknames (separated by semicolons)</label>
+        <input type="text" id="usr-nicknames" placeholder="sal; sallo; sally cally" />
+        <label>Pronouns</label>
+        <input type="text" id="usr-pronouns" placeholder="she/her" />
+        <label>Your Appearance / Info</label>
+        <textarea id="usr-appearance" placeholder="Short brown hair, loves coffee..."></textarea>
+        <label>Your PFP (Upload Image or Emoji)</label>
+        <input type="file" accept="image/*" class="file-input" onchange="handlePfpUpload(event, 'usr-pfp')" />
+        <input type="text" id="usr-pfp" />
+        <button class="save-btn" onclick="saveUserProfile()">Save Profile</button>
+        <button class="close-btn" onclick="closeModal('user-modal')">Cancel</button>
+      </div>
+    </div>
+
+    <!-- MODAL: GLOBAL SETTINGS -->
+    <div class="modal" id="global-settings-modal">
+      <div class="modal-content">
+        <h3>Global Settings ⚙︎</h3>
+        <label>Groq API Key</label>
+        <input type="password" id="gs-api-key" placeholder="Paste Groq Key here..." />
+        <label>Chat Background Image (Upload from Gallery)</label>
+        <input type="file" accept="image/*" class="file-input" onchange="handleBgUpload(event)" />
+        <button class="save-btn" onclick="saveGlobalSettings()">Save Settings</button>
+        <button class="danger-btn" onclick="clearCurrentChat()">Clear Current Chat History 🗑️</button>
+        <button class="close-btn" onclick="closeModal('global-settings-modal')">Cancel</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
