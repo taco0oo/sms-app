@@ -153,6 +153,8 @@
         <input type="text" id="cs-origname" />
         <label>Personality Traits</label>
         <textarea id="cs-personality" placeholder="e.g. Grumpy, gets irritated easily, dramatic"></textarea>
+        <label>Current Environment / Situation</label>
+        <textarea id="cs-environment" placeholder="e.g. In 2nd period math class; classmates are going crazy over upcoming exams."></textarea>
         <label>Manner of Texting (Quirks)</label>
         <textarea id="cs-quirks" placeholder="e.g. Texts in single big paragraphs, no capital letters"></textarea>
 
@@ -198,6 +200,10 @@
         <h3>Global Settings ⚙︎</h3>
         <label>Groq API Key</label>
         <input type="password" id="gs-api-key" placeholder="Paste Groq Key here..." />
+        
+        <label>Your Time Zone Offset (UTC Hours)</label>
+        <input type="number" id="gs-utc-offset" step="0.5" placeholder="e.g. -5 for EST, +5 for PKT, 0 for UTC" />
+
         <label>Chat Background Image (Upload from Gallery)</label>
         <input type="file" accept="image/*" class="file-input" onchange="handleBgUpload(event)" />
         <label style="display:flex; align-items:center; gap:8px; margin-top:10px; font-size:13px; color:var(--text-main);">
@@ -217,4 +223,3 @@
   <script src="script.js"></script>
 </body>
 </html>
-
