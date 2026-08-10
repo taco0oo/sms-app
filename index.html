@@ -17,16 +17,6 @@
   <div class="phone-container" id="phone-app">
     <div class="overlay-backdrop" id="backdrop" onclick="closeDrawer()"></div>
 
-    <!-- REACTION BAR -->
-    <div class="reaction-picker" id="reaction-picker">
-      <span onclick="addReaction('❤️')">❤️</span>
-      <span onclick="addReaction('😂')">😂</span>
-      <span onclick="addReaction('😮')">😮</span>
-      <span onclick="addReaction('😢')">😢</span>
-      <span onclick="addReaction('👍')">👍</span>
-      <span onclick="addReaction('😡')">😡</span>
-    </div>
-
     <!-- 1. SLIDING CONTACTS DRAWER -->
     <div class="drawer" id="drawer">
       <div class="drawer-header">
@@ -210,8 +200,11 @@
         <input type="password" id="gs-api-key" placeholder="Paste Groq Key here..." />
         <label>Chat Background Image (Upload from Gallery)</label>
         <input type="file" accept="image/*" class="file-input" onchange="handleBgUpload(event)" />
-        <label style="display:flex; align-items:center; gap:8px; margin-top:10px;">
+        <label style="display:flex; align-items:center; gap:8px; margin-top:10px; font-size:13px; color:var(--text-main);">
           <input type="checkbox" id="gs-proactive-toggle" /> Let contacts text you first when you've been away
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; margin-top:6px; font-size:13px; color:var(--text-main);">
+          <input type="checkbox" id="gs-notifications-toggle" /> Enable desktop/system notifications when texted
         </label>
         <button class="save-btn" onclick="saveGlobalSettings()">Save Settings</button>
         <button class="danger-btn" onclick="clearCurrentChat()">Clear Current Chat History 🗑️</button>
@@ -224,3 +217,4 @@
   <script src="script.js"></script>
 </body>
 </html>
+
