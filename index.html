@@ -17,6 +17,16 @@
   <div class="phone-container" id="phone-app">
     <div class="overlay-backdrop" id="backdrop" onclick="closeDrawer()"></div>
 
+    <!-- REACTION BAR -->
+    <div class="reaction-picker" id="reaction-picker">
+      <span onclick="addReaction('❤️')">❤️</span>
+      <span onclick="addReaction('😂')">😂</span>
+      <span onclick="addReaction('😮')">😮</span>
+      <span onclick="addReaction('😢')">😢</span>
+      <span onclick="addReaction('👍')">👍</span>
+      <span onclick="addReaction('😡')">😡</span>
+    </div>
+
     <!-- 1. SLIDING CONTACTS DRAWER -->
     <div class="drawer" id="drawer">
       <div class="drawer-header">
@@ -151,36 +161,6 @@
         <h3>Character Settings ⚙︎</h3>
         <label>Original Name</label>
         <input type="text" id="cs-origname" />
-        
-        <label>Relationship Dynamic</label>
-        <select id="cs-rel-dynamic">
-          <option value="unromantic">Unromantic / Friendly</option>
-          <option value="romantic">Romantically Interested / Flirty</option>
-          <option value="reluctant">Reluctant / Distant</option>
-          <option value="rival">Rival / Banter</option>
-          <option value="family">Family / Protective</option>
-        </select>
-
-        <label>Creativity / Temperature: <span id="cs-temp-val">0.7</span></label>
-        <input type="range" id="cs-temperature" min="0.2" max="1.0" step="0.05" oninput="document.getElementById('cs-temp-val').innerText = this.value" />
-
-        <label>Response Length</label>
-        <select id="cs-res-length">
-          <option value="short">Short (1-2 sentences)</option>
-          <option value="balanced">Balanced SMS</option>
-          <option value="long">Long & Detailed</option>
-          <option value="paragraphs">Detailed Paragraphs</option>
-        </select>
-
-        <label>Message Frequency / Block Style</label>
-        <select id="cs-msg-freq">
-          <option value="single">Single Block Response</option>
-          <option value="multi">Allow Multi-Idea Texts</option>
-        </select>
-
-        <label>Always Remember Directives</label>
-        <textarea id="cs-always-remember" placeholder="e.g. Always remember we met at the beach in summer. Never admit you like sweets."></textarea>
-
         <label>Personality Traits</label>
         <textarea id="cs-personality" placeholder="e.g. Grumpy, gets irritated easily, dramatic"></textarea>
         <label>Manner of Texting (Quirks)</label>
@@ -230,6 +210,9 @@
         <input type="password" id="gs-api-key" placeholder="Paste Groq Key here..." />
         <label>Chat Background Image (Upload from Gallery)</label>
         <input type="file" accept="image/*" class="file-input" onchange="handleBgUpload(event)" />
+        <label style="display:flex; align-items:center; gap:8px; margin-top:10px;">
+          <input type="checkbox" id="gs-proactive-toggle" /> Let contacts text you first when you've been away
+        </label>
         <button class="save-btn" onclick="saveGlobalSettings()">Save Settings</button>
         <button class="danger-btn" onclick="clearCurrentChat()">Clear Current Chat History 🗑️</button>
         <button class="close-btn" onclick="closeModal('global-settings-modal')">Cancel</button>
