@@ -5,6 +5,8 @@
       apiKey: '',
       bgUrl: '',
       activeContactId: 1,
+      proactiveTextsEnabled: true,
+      notificationsEnabled: true,
       user: { name: 'Sally', nicknames: 'sal; sallo', pronouns: 'she/her', appearance: 'Cute aesthetic lover', pfp: '🌸' },
       stickers: [],
       contacts: [
@@ -36,6 +38,22 @@
 
     function saveData() {
       localStorage.setItem('cute_sms_data', JSON.stringify(globalData));
+    }
+
+    // Request Notification Permissions if enabled
+    function requestNotificationPermission() {
+      if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+        Notification.requestPermission();
+      }
+    }
+
+    function sendSystemNotification(senderName, messageText) {
+      if (globalData.notificationsEnabled !== false && 'Notification' in window && Notification.permission === 'granted') {
+        new Notification(`New message from ${senderName} 📩`, {
+          body: messageText,
+          icon: 'icon-192.png'
+        });
+      }
     }
 
     // =========================================
@@ -108,7 +126,6 @@
       const chatBox = document.getElementById('chat-box');
       chatBox.innerHTML = '';
 
-      // Only the most recent user message ever shows "Seen" (like real SMS apps).
       let lastUserIdx = -1;
       c.history.forEach((m, idx) => { if (m.role === 'user') lastUserIdx = idx; });
 
@@ -126,8 +143,6 @@
       chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    // Adds "Seen" to the meta line under the current last user bubble and
-    // removes it from any earlier one (so only the newest reflects the read state).
     function markLastUserMessageSeen() {
       const chatBox = document.getElementById('chat-box');
       chatBox.querySelectorAll('.message-wrapper.user .msg-meta').forEach(el => {
@@ -142,7 +157,8 @@
 
     function renderContacts() {
       const listEl = document.getElementById('contact-list');
-      const search = document.getElementById('search-contacts').value.toLowerCase();
+      const searchInput = document.getElementById('search-contacts');
+      const search = searchInput ? searchInput.value.toLowerCase() : '';
       listEl.innerHTML = '';
 
       globalData.contacts.filter(c => c.origName.toLowerCase().includes(search) || (c.nickname && c.nickname.toLowerCase().includes(search))).forEach(c => {
@@ -202,11 +218,7 @@
 
       function updateHeight() {
         if (vv) {
-          // vv.height shrinks when the keyboard opens.
           appContainer.style.height = `${vv.height}px`;
-          // vv.offsetTop accounts for the page having scrolled up under
-          // the keyboard/address bar — without this the bar can still
-          // end up pinned off-screen on some Android WebViews.
           appContainer.style.transform = vv.offsetTop ? `translateY(${vv.offsetTop}px)` : 'none';
         } else {
           appContainer.style.height = `${window.innerHeight}px`;
@@ -214,7 +226,6 @@
         chatBox.scrollTop = chatBox.scrollHeight;
       }
 
-      // Run once immediately so the layout is correct before any focus/resize event.
       updateHeight();
 
       if (vv) {
@@ -227,8 +238,6 @@
       const inputField = document.getElementById('user-input');
       inputField.addEventListener('focus', () => {
         document.getElementById('sticker-drawer').classList.remove('open');
-        // Some WebViews fire the visualViewport resize a beat late, so we
-        // re-check a couple of times right after focus rather than once.
         setTimeout(updateHeight, 50);
         setTimeout(updateHeight, 300);
         setTimeout(updateHeight, 600);
@@ -326,7 +335,6 @@
       document.getElementById('sticker-drawer').classList.remove('open');
       const c = getActiveContact();
 
-      // Bot saves user's sticker to its own saved list
       if (!c.savedStickers) c.savedStickers = [];
       if (!c.savedStickers.some(st => st.imgUrl === sticker.imgUrl)) {
         c.savedStickers.push(sticker);
@@ -373,12 +381,8 @@
       queueAiResponse();
     }
 
-    // How long (ms) a contact can take before even "seeing" your message.
     const MIN_READ_DELAY_MS = 0;
     const MAX_READ_DELAY_MS = 3000;
-
-    // Give the user a moment to send a follow-up text — the bot waits for a
-    // pause before it "looks at" the whole burst of messages at once.
     let responseDebounceTimer = null;
     const RESPONSE_DEBOUNCE_MS = 1100;
 
@@ -391,13 +395,11 @@
       const c = getActiveContact();
       const u = globalData.user;
 
-      // --- "They haven't opened the chat yet" simulation ---------------
       const readDelayMs = Math.floor(MIN_READ_DELAY_MS + Math.random() * (MAX_READ_DELAY_MS - MIN_READ_DELAY_MS));
       if (readDelayMs > 0) {
         await new Promise(resolve => setTimeout(resolve, readDelayMs));
       }
 
-      // Mark the message "Seen" now that the delay has elapsed, then show it.
       const lastMsg = c.history[c.history.length - 1];
       if (lastMsg) lastMsg.seen = true;
       saveData();
@@ -411,29 +413,25 @@
 
       const readDelaySeconds = Math.round(readDelayMs / 1000);
       const delayContext = readDelaySeconds >= 2
-        ? `You took about ${readDelaySeconds} seconds to notice and start replying to this text — a bit of a gap for texting. There's a decent chance you'd open with one short, natural line explaining what kept you busy in-world, fitting your personality/backstory/appearance above. Don't force this every time it happens, and keep it brief — it's a passing remark, not the whole reply.`
-        : `You replied at a normal/quick pace — no need to mention or explain timing at all.`;
+        ? `You took about ${readDelaySeconds} seconds to notice and start replying to this text.`
+        : `You replied at a normal/quick pace.`;
 
       const systemPrompt = `
 You are roleplaying as ${c.origName} in a custom SMS app.
 ${c.nickname ? `User calls you "${c.nickname}".` : ''}
 
-CHARACTER PROFILE (this always comes first — nothing below should ever override or contradict it):
+CHARACTER PROFILE:
 - Personality: ${c.personality || 'Friendly'}
 - Manner of Texting / Quirks: ${c.quirks || 'Texts naturally'}
 - Backstory: ${c.backstory || 'None'}
 - Physical Appearance: ${c.appearance || 'Not specified'}
 
-RELATIONSHIP WARMTH LEVEL: ${c.relationshipPct || 0}% (out of 100%). This only tracks how much you two have grown closer over time — it is a subtle modifier layered ON TOP of your core personality above, never a replacement for it.
-- A naturally warm/welcoming character stays warm and welcoming even at low %, just a little less vulnerable/familiar than they'd be at high %.
-- A naturally cold/guarded character stays guarded even at low %, gradually opening up more as % rises.
-- In short: express warmth-level changes *through the lens of your personality*, not instead of it.
+RELATIONSHIP WARMTH LEVEL: ${c.relationshipPct || 0}% (out of 100%).
 
 RESPONSE TIMING: ${delayContext}
 
 ${c.memoryEnabled ? `CALLBACK MEMORIES & SHARED HISTORY:
-- ${c.relationshipContext || 'Shared past experiences'}
-- System Instruction: Occasionally reference past shared events or bring up prior details from earlier in the chat naturally.` : ''}
+- ${c.relationshipContext || 'Shared past experiences'}` : ''}
 
 USER PROFILE:
 - Name: ${u.name} (${u.nicknames})
@@ -442,9 +440,9 @@ USER PROFILE:
 ${savedStickerOptions}
 
 FORMAT INSTRUCTION:
-1. Judge how warm, thoughtful, and engaged the user's LATEST message(s) were. Use these as calibration anchors: a bare, low-effort reply like "im okay" is worth about +0.2; a warm, inviting reply like "im good! what about you?" is worth about +0.7; something even more caring, detailed, or vulnerable can go up to +1.5. A cold, dismissive, or rude message is worth 0 or a negative value down to -0.5. Output the tag at the VERY END: [RELATIONSHIP_DELTA: +0.7]
+1. Judge how warm, thoughtful, and engaged the user's LATEST message(s) were. Output tag: [RELATIONSHIP_DELTA: +0.7]
 2. If using a saved sticker, include [USE_STICKER:index] at the end.
-3. If — and only if — it truly fits your quirks/personality (e.g. someone who double-texts or sends short scattered messages instead of one block), you may split your reply into multiple separate texts by putting ||| between each one. Most replies should still just be one message — only split when your character would genuinely text that way. Never use ||| if your quirks say you prefer single big message blocks.
+3. Use ||| to split multiple texts if character quirks warrant it.
       `;
 
       const apiMessages = [
@@ -474,7 +472,6 @@ FORMAT INSTRUCTION:
 
         let reply = data.choices[0].message.content;
 
-        // Relationship growth logic — reward warmer, more engaged replies.
         const deltaMatch = reply.match(/\[RELATIONSHIP_DELTA:\s*([\+\-]?\d*(?:\.\d+)?)]/i);
         let delta = 0.4;
         if (deltaMatch) {
@@ -483,7 +480,6 @@ FORMAT INSTRUCTION:
         }
         c.relationshipPct = Math.min(100, Math.max(0, (c.relationshipPct || 0) + delta));
 
-        // Bot sticker sending logic
         let usedStickerUrl = null;
         const stickerMatch = reply.match(/\[USE_STICKER:(\d+)\]/i);
         if (stickerMatch) {
@@ -494,23 +490,6 @@ FORMAT INSTRUCTION:
           reply = reply.replace(/\[USE_STICKER:\d+\]/gi, '').trim();
         }
 
-        // Personality-based reaction probability
-        const personalityLower = (c.personality || '').toLowerCase();
-        const isAloof = personalityLower.includes('aloof') || personalityLower.includes('grumpy') || personalityLower.includes('cold') || personalityLower.includes('distant');
-        const isJoyful = personalityLower.includes('joy') || personalityLower.includes('happy') || personalityLower.includes('cheerful') || personalityLower.includes('bubbly') || personalityLower.includes('excited');
-
-        let reactionChance = 0.25;
-        if (isAloof) reactionChance = 0.10;
-        if (isJoyful) reactionChance = 0.45;
-
-        if (Math.random() < reactionChance) {
-          const rxns = ['❤️', '😂', '😮', '👍', '😢'];
-          const botReaction = rxns[Math.floor(Math.random() * rxns.length)];
-          const lastUserMsg = c.history[c.history.length - 1];
-          if (lastUserMsg && lastUserMsg.role === 'user') lastUserMsg.reaction = botReaction;
-        }
-
-        // Split into multiple texts if the bot decided to double/triple-text.
         const chunks = reply.split('|||').map(t => t.trim()).filter(Boolean);
         await deliverBotMessages(c, chunks, typingBubble, usedStickerUrl);
 
@@ -519,9 +498,6 @@ FORMAT INSTRUCTION:
       }
     }
 
-    // Delivers one or more bot texts in sequence, each with its own short
-    // "typing" pause. Reuses the already-visible typing bubble for the
-    // first chunk, then shows fresh dots before each additional one.
     async function deliverBotMessages(c, chunks, firstTypingBubble, usedStickerUrl) {
       const isViewingThisChat = c.id === globalData.activeContactId;
 
@@ -529,7 +505,6 @@ FORMAT INSTRUCTION:
         const text = chunks[i];
         const typingBubble = isViewingThisChat ? (i === 0 ? firstTypingBubble : appendTypingDots()) : null;
 
-        // Shorter, snappier "typing" pause per message.
         const delay = Math.min(Math.max(350, text.length * 12), 1800);
         await new Promise(resolve => setTimeout(resolve, delay));
 
@@ -542,7 +517,7 @@ FORMAT INSTRUCTION:
         c.lastActivityAt = Date.now();
 
         if (isViewingThisChat) {
-          typingBubble.innerText = text;
+          if (typingBubble) typingBubble.innerText = text;
           saveData();
           renderHeader();
           renderMessages();
@@ -551,24 +526,25 @@ FORMAT INSTRUCTION:
           saveData();
           renderContacts();
         }
+
+        // Send System Notification if user is away or focused on another contact
+        if (!isViewingThisChat || document.hidden) {
+          sendSystemNotification(c.nickname || c.origName, text);
+        }
       }
     }
 
     // =========================================
     // PROACTIVE "THEY TEXT FIRST" SYSTEM
     // =========================================
-    // Only runs while the app is open in the browser/PWA — there's no
-    // real background push here, just a periodic check while the tab
-    // is alive. Tweak these numbers to taste. Can be turned off entirely
-    // from the ⋮ Global Settings menu.
-    const PROACTIVE_CHECK_INTERVAL_MS = 60000;         // how often we roll the dice
-    const PROACTIVE_MIN_QUIET_MS = 60 * 60 * 1000;      // contact must be quiet at least this long first (1 hour)
-    const PROACTIVE_CHANCE = 0.15;                      // chance per check once eligible
+    const PROACTIVE_CHECK_INTERVAL_MS = 60000;
+    const PROACTIVE_MIN_QUIET_MS = 60 * 60 * 1000;
+    const PROACTIVE_CHANCE = 0.15;
 
     setInterval(checkForProactiveMessages, PROACTIVE_CHECK_INTERVAL_MS);
 
     async function checkForProactiveMessages() {
-      if (!globalData.apiKey || document.hidden) return;
+      if (!globalData.apiKey) return;
       if (globalData.proactiveTextsEnabled === false) return;
 
       for (const c of globalData.contacts) {
@@ -586,26 +562,14 @@ FORMAT INSTRUCTION:
       const isViewingThisChat = c.id === globalData.activeContactId;
 
       const quietHours = quietForMs / (60 * 60 * 1000);
-      // The longer the silence, the more it's allowed to read as
-      // impatient/missing-you rather than just a casual check-in.
       const moodHint = quietHours >= 6
-        ? `It's been a genuinely long time (${Math.round(quietHours)}+ hours) — you're allowed to sound a little impatient, dramatic, worried, or like you're teasing them for vanishing ("are you there??", "did you fall asleep on me?", "hellooo??"), IF that fits your personality. A more reserved character might instead sound quietly concerned or standoffish about it instead of dramatic.`
-        : `It's only been about an hour — keep it light and casual, like a normal "thought of you" text, not a big dramatic gap.`;
+        ? `It's been a long time (${Math.round(quietHours)}+ hours) — express impatience, concern, or teasing naturally.`
+        : `It's been an hour — keep it casual and light.`;
 
       const systemPrompt = `
-You are roleplaying as ${c.origName} in a custom SMS app. This time, YOU are texting ${u.name} first, out of the blue — they haven't messaged you in a while.
-
-CHARACTER PROFILE:
-- Personality: ${c.personality || 'Friendly'}
-- Manner of Texting / Quirks: ${c.quirks || 'Texts naturally'}
-- Backstory: ${c.backstory || 'None'}
-- Physical Appearance: ${c.appearance || 'Not specified'}
-
-RELATIONSHIP WARMTH LEVEL: ${c.relationshipPct || 0}% (out of 100%) — express this through the lens of your personality, not instead of it.
-
+You are roleplaying as ${c.origName}. You are texting ${u.name} first after a period of silence.
+CHARACTER PROFILE: ${c.personality}
 SILENCE CONTEXT: ${moodHint}
-
-Write a short, natural, in-character text (or a couple, separated by |||, only if that fits your quirks) initiating contact — checking in, calling them out for going quiet, sharing something that happened to you, asking about them, whatever fits your world/personality and the silence context above. Do not greet like a stranger; you two know each other. Do NOT include any [RELATIONSHIP_DELTA] or other tags — just the text(s).
       `;
 
       const apiMessages = [
@@ -639,7 +603,7 @@ Write a short, natural, in-character text (or a couple, separated by |||, only i
         await deliverBotMessages(c, chunks, firstTypingBubble, null);
 
       } catch (err) {
-        // Fail silently — a missed proactive text isn't worth alarming the user over.
+        // Fail silently
       }
     }
 
@@ -656,18 +620,6 @@ Write a short, natural, in-character text (or a couple, separated by |||, only i
       } else {
         bubble.innerText = text;
       }
-
-      if (reaction) {
-        const badge = document.createElement('div');
-        badge.className = 'reaction-badge';
-        badge.innerText = reaction;
-        wrapper.appendChild(badge);
-      }
-
-      bubble.addEventListener('click', (e) => {
-        e.stopPropagation();
-        openReactionPicker(e, index);
-      });
 
       bubble.addEventListener('touchstart', () => {
         longTouchTimer = setTimeout(() => openDeleteModal(index), 600);
@@ -690,7 +642,7 @@ Write a short, natural, in-character text (or a couple, separated by |||, only i
     function appendTypingDots() {
       const chatBox = document.getElementById('chat-box');
       const wrapper = document.createElement('div');
-      wrapper.className = 'message-wrapper bot';
+      wrapper.className = `message-wrapper bot`;
       const bubble = document.createElement('div');
       bubble.className = 'message';
       bubble.innerHTML = `<div class="typing-dots"><span></span><span></span><span></span></div>`;
@@ -699,34 +651,6 @@ Write a short, natural, in-character text (or a couple, separated by |||, only i
       chatBox.scrollTop = chatBox.scrollHeight;
       return bubble;
     }
-
-    // =========================================
-    // REACTIONS SYSTEM
-    // =========================================
-    function openReactionPicker(event, msgIndex) {
-      selectedMsgIndex = msgIndex;
-      const picker = document.getElementById('reaction-picker');
-      const rect = event.currentTarget.getBoundingClientRect();
-      const phoneRect = document.getElementById('phone-app').getBoundingClientRect();
-
-      picker.style.top = `${rect.top - phoneRect.top - 38}px`;
-      picker.style.left = `${Math.min(rect.left - phoneRect.left, 220)}px`;
-      picker.style.display = 'flex';
-    }
-
-    function addReaction(emoji) {
-      if (selectedMsgIndex === null) return;
-      const c = getActiveContact();
-      c.history[selectedMsgIndex].reaction = emoji;
-      saveData();
-      renderMessages();
-      document.getElementById('reaction-picker').style.display = 'none';
-    }
-
-    document.addEventListener('click', () => {
-      document.getElementById('reaction-picker').style.display = 'none';
-      document.getElementById('quick-edit-pop').style.display = 'none';
-    });
 
     // =========================================
     // GALLERY IMAGE HANDLING
@@ -933,6 +857,8 @@ Write a short, natural, in-character text (or a couple, separated by |||, only i
       document.getElementById('gs-api-key').value = globalData.apiKey || '';
       const proactiveToggle = document.getElementById('gs-proactive-toggle');
       if (proactiveToggle) proactiveToggle.checked = globalData.proactiveTextsEnabled !== false;
+      const notifToggle = document.getElementById('gs-notifications-toggle');
+      if (notifToggle) notifToggle.checked = globalData.notificationsEnabled !== false;
       document.getElementById('global-settings-modal').style.display = 'flex';
     }
 
@@ -940,6 +866,11 @@ Write a short, natural, in-character text (or a couple, separated by |||, only i
       globalData.apiKey = document.getElementById('gs-api-key').value.trim();
       const proactiveToggle = document.getElementById('gs-proactive-toggle');
       if (proactiveToggle) globalData.proactiveTextsEnabled = proactiveToggle.checked;
+      const notifToggle = document.getElementById('gs-notifications-toggle');
+      if (notifToggle) {
+        globalData.notificationsEnabled = notifToggle.checked;
+        if (globalData.notificationsEnabled) requestNotificationPermission();
+      }
       document.getElementById('chat-box').style.backgroundImage = globalData.bgUrl ? `url('${globalData.bgUrl}')` : 'none';
       saveData();
       closeModal('global-settings-modal');
