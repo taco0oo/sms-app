@@ -931,13 +931,15 @@ Write a short, natural, in-character text (or a couple, separated by |||, only i
     // Global Settings
     function openGlobalSettingsModal() {
       document.getElementById('gs-api-key').value = globalData.apiKey || '';
-      document.getElementById('gs-proactive-toggle').checked = globalData.proactiveTextsEnabled !== false;
+      const proactiveToggle = document.getElementById('gs-proactive-toggle');
+      if (proactiveToggle) proactiveToggle.checked = globalData.proactiveTextsEnabled !== false;
       document.getElementById('global-settings-modal').style.display = 'flex';
     }
 
     function saveGlobalSettings() {
       globalData.apiKey = document.getElementById('gs-api-key').value.trim();
-      globalData.proactiveTextsEnabled = document.getElementById('gs-proactive-toggle').checked;
+      const proactiveToggle = document.getElementById('gs-proactive-toggle');
+      if (proactiveToggle) globalData.proactiveTextsEnabled = proactiveToggle.checked;
       document.getElementById('chat-box').style.backgroundImage = globalData.bgUrl ? `url('${globalData.bgUrl}')` : 'none';
       saveData();
       closeModal('global-settings-modal');
@@ -953,3 +955,4 @@ Write a short, natural, in-character text (or a couple, separated by |||, only i
         });
       });
     }
+
