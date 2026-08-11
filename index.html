@@ -55,6 +55,7 @@
           <button class="icon-btn" onclick="openQuickEditModal()" title="Edit PFP & Nickname">✎</button>
           <button class="icon-btn" onclick="openContactSettingsModal()" title="Edit AI Persona">⚙︎</button>
           <button class="icon-btn" onclick="openPersonalDossierModal()" title="Personal Dossier">🪪</button>
+          <button class="icon-btn" onclick="openNotebookModal()" title="Character Notebook">📝</button>
         </div>
       </div>
 
@@ -83,6 +84,17 @@
           <button class="icon-btn" onclick="openAddStickerModal()" title="Add Custom Sticker">🖌️</button>
         </div>
         <div class="sticker-grid" id="sticker-grid"></div>
+      </div>
+    </div>
+
+    <!-- MODAL: CHARACTER NOTEBOOK -->
+    <div class="modal" id="notebook-modal">
+      <div class="modal-content">
+        <h3>📝 Character Notes & Facts</h3>
+        <p style="font-size:12px; color:var(--text-pale);">Add small facts or rules the character must remember in dialogue.</p>
+        <textarea id="nb-notes" rows="6" placeholder="e.g.&#10;- Jason showers a lot and talks about it&#10;- Jason wouldn't say he loves cats, he's a dog person&#10;- Doesn't use stickers"></textarea>
+        <button class="save-btn" onclick="saveNotebook()">Save Notes</button>
+        <button class="close-btn" onclick="closeModal('notebook-modal')">Cancel</button>
       </div>
     </div>
 
@@ -225,7 +237,9 @@
         <button class="save-btn" onclick="saveUserProfile()">Save Profile</button>
         <button class="close-btn" onclick="closeModal('user-modal')">Cancel</button>
       </div>
-    </div>    <!-- MODAL: GLOBAL SETTINGS -->
+    </div>
+
+    <!-- MODAL: GLOBAL SETTINGS -->
     <div class="modal" id="global-settings-modal">
       <div class="modal-content">
         <h3>Global Settings ⚙︎</h3>
@@ -254,4 +268,3 @@
   <script src="script.js"></script>
 </body>
 </html>
-
