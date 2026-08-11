@@ -193,6 +193,35 @@
         <button class="close-btn" onclick="closeModal('user-modal')">Cancel</button>
       </div>
     </div>
+<!-- Personal Settings Modal / Tab -->
+<div id="personal-settings-tab" class="settings-modal hidden">
+  <div class="modal-header">
+    <h3>🪪 Personal Dossier</h3>
+    <button id="close-settings-btn" onclick="togglePersonalSettings()">✕</button>
+  </div>
+
+  <div class="modal-body">
+    <!-- Current Activity -->
+    <div class="input-group">
+      <label for="char-status">Current Activity / Status</label>
+      <input type="text" id="char-status" placeholder="e.g., Studying at the library, Drinking coffee">
+    </div>
+
+    <!-- Music Taste -->
+    <div class="input-group">
+      <label for="char-music">Favorite Music / Bands</label>
+      <textarea id="char-music" rows="2" placeholder="e.g., Indie rock, Arctic Monkeys, Radiohead"></textarea>
+    </div>
+
+    <!-- Daily Routine / Habits -->
+    <div class="input-group">
+      <label for="char-routine">Daily Routine & Vibe</label>
+      <textarea id="char-routine" rows="2" placeholder="e.g., Night owl, gets sleepy after 11 PM, hates mornings"></textarea>
+    </div>
+
+    <button class="save-btn" onclick="savePersonalSettings()">Save Settings</button>
+  </div>
+</div>
 
     <!-- MODAL: GLOBAL SETTINGS -->
     <div class="modal" id="global-settings-modal">
