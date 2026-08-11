@@ -1,3 +1,4 @@
+
 // =========================================
 // STATE & STORAGE
 // =========================================
@@ -21,6 +22,7 @@ let globalData = JSON.parse(localStorage.getItem('cute_sms_data')) || {
       quirks: 'ALWAYS replies in a single big message block. Hates cluttering SMS.',
       backstory: 'Childhood friend who texts you reluctantly.',
       appearance: 'Messy black hair, tall, dark hoodies',
+      notes: '',
       relationshipPct: 15,
       memoryEnabled: true,
       relationshipContext: 'Met in high school, got lost in an amusement park together for hours.',
@@ -416,7 +418,7 @@ async function sendMessage() {
 
 let responseDebounceTimer = null;
 let awaitingReply = false;
-const RESPONSE_DEBOUNCE_MS = 3500; // waits this long after your last message/keystroke before replying
+const RESPONSE_DEBOUNCE_MS = 3500;
 
 function updateBotStatusIndicator(text) {
   const el = document.getElementById('bot-status-indicator');
@@ -430,9 +432,6 @@ function queueAiResponse() {
   responseDebounceTimer = setTimeout(() => { triggerAiResponse(); }, RESPONSE_DEBOUNCE_MS);
 }
 
-// Called on every keystroke in the input box. If a reply is pending, typing
-// (even without sending) pushes the reply back so the bot doesn't answer
-// mid-thought.
 function extendReplyWaitIfPending() {
   if (!awaitingReply) return;
   clearTimeout(responseDebounceTimer);
@@ -456,16 +455,17 @@ async function triggerAiResponse() {
   const typingBubble = appendTypingDots();
 
   const savedStickerOptions = (c.savedStickers && c.savedStickers.length > 0)
-    ? `\nAVAILABLE STICKERS YOU HAVE SAVED/STOLEN FROM USER:\n` + c.savedStickers.map((s, idx) => `[STICKER_INDEX:${idx}] - "${s.name}" (${s.desc})`).join('\n') + `\nIf you want to send one back, include [USE_STICKER:index] at the end of your reply.`
+    ? `\nAVAILABLE STICKERS YOU HAVE SAVED/STOLEN FROM USER:\n` + c.savedStickers.map((s, idx) => `[STICKER_INDEX:${idx}] - "${s.name}" (${s.desc})`).join('\n') + `\nUse [USE_STICKER:index] ONLY if relevant. Do NOT send stickers in every message.`
     : '';
 
-  // Time-aware sleepiness prompt logic
   let timeOfDayContext = `The current local time is ${timeDetails.formattedTime}.`;
   if (timeDetails.hour24 >= 23 || timeDetails.hour24 < 5) {
     timeOfDayContext += ` It's late at night / early morning. You might feel sleepy, groggy, or advise the user to go to sleep.`;
   } else if (timeDetails.hour24 >= 5 && timeDetails.hour24 < 9) {
     timeOfDayContext += ` It's early morning. You might be getting ready, tired, or waking up.`;
   }
+
+  const notesContext = c.notes ? `\nCHARACTER IMPORTANT NOTES & FACTS:\n${c.notes}\n` : '';
 
   const systemPrompt = `
 You are roleplaying as ${c.origName} in a custom SMS app.
@@ -480,7 +480,7 @@ CHARACTER PROFILE:
 - Current Activity/Status: ${c.status || 'Just relaxing'} (If user asks what you're doing, refer to this!)
 - Favorite Music/Artists: ${c.music || 'Various genres'} (Use this taste when discussing songs)
 - Daily Routine/Vibe: ${c.routine || 'Normal schedule'}
-${getMemoriesPromptContext(c)}
+${notesContext}${getMemoriesPromptContext(c)}
 REAL-TIME TIME AWARENESS:
 ${timeOfDayContext} (If the user asks what time it is, answer accurately according to this time!).
 
@@ -497,13 +497,22 @@ ${savedStickerOptions}
 
 FORMAT INSTRUCTION:
 1. Judge how warm, thoughtful, and engaged the user's LATEST message(s) were. Output tag: [RELATIONSHIP_DELTA: +0.7]
-2. If using a saved sticker, include [USE_STICKER:index] at the end.
+2. Use stickers sparingly. If using a saved sticker, include [USE_STICKER:index] at the end.
 3. Use ||| to split multiple texts if character quirks warrant it.
   `;
 
+  // CLEAN HISTORY: Remove raw [USE_STICKER] tags so Llama doesn't get trapped in a loop!
+  const cleanedHistory = c.history.map(h => {
+    let cleanContent = h.content;
+    if (h.role === 'assistant') {
+      cleanContent = cleanContent.replace(/\[USE_STICKER:\d+\]/gi, '').trim();
+    }
+    return { role: h.role === 'user' ? 'user' : 'assistant', content: cleanContent };
+  });
+
   const apiMessages = [
     { role: 'system', content: systemPrompt },
-    ...c.history.map(h => ({ role: h.role === 'user' ? 'user' : 'assistant', content: h.content }))
+    ...cleanedHistory
   ];
 
   try {
@@ -862,9 +871,22 @@ function saveContactSettings() {
   closeModal('contact-settings-modal');
 }
 
-// =========================================
+// NOTEBOOK
+function openNotebookModal() {
+  document.getElementById('quick-edit-pop').style.display = 'none';
+  const c = getActiveContact();
+  document.getElementById('nb-notes').value = c.notes || '';
+  document.getElementById('notebook-modal').style.display = 'flex';
+}
+
+function saveNotebook() {
+  const c = getActiveContact();
+  c.notes = document.getElementById('nb-notes').value.trim();
+  saveData();
+  closeModal('notebook-modal');
+}
+
 // PERSONAL DOSSIER (status / music / routine)
-// =========================================
 function openPersonalDossierModal() {
   document.getElementById('quick-edit-pop').style.display = 'none';
   const c = getActiveContact();
@@ -883,9 +905,7 @@ function savePersonalDossier() {
   closeModal('personal-dossier-modal');
 }
 
-// =========================================
 // PER-CHARACTER MEMORY CALENDAR
-// =========================================
 let calendarViewYear, calendarViewMonth;
 
 function openCalendarModal() {
@@ -1011,6 +1031,7 @@ function addNewContact() {
     quirks: '',
     backstory: '',
     appearance: '',
+    notes: '',
     relationshipPct: 0,
     memoryEnabled: true,
     relationshipContext: '',
@@ -1098,4 +1119,4 @@ if ('serviceWorker' in navigator) {
       console.log('Service worker registration failed:', err);
     });
   });
-    }
+}
