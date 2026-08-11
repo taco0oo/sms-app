@@ -24,6 +24,10 @@ let globalData = JSON.parse(localStorage.getItem('cute_sms_data')) || {
       relationshipPct: 15,
       memoryEnabled: true,
       relationshipContext: 'Met in high school, got lost in an amusement park together for hours.',
+      status: '',
+      music: '',
+      routine: '',
+      memories: [],
       history: [],
       savedStickers: [],
       unreadCount: 0,
@@ -410,10 +414,16 @@ async function sendMessage() {
 }
 
 let responseDebounceTimer = null;
-const RESPONSE_DEBOUNCE_MS = 1100;
+const RESPONSE_DEBOUNCE_MS = 3500; // waits this long after your last message before replying
+
+function updateBotStatusIndicator(text) {
+  const el = document.getElementById('bot-status-indicator');
+  if (el) el.innerText = text || '';
+}
 
 function queueAiResponse() {
   clearTimeout(responseDebounceTimer);
+  updateBotStatusIndicator('Waiting for you to finish...');
   responseDebounceTimer = setTimeout(() => { triggerAiResponse(); }, RESPONSE_DEBOUNCE_MS);
 }
 
@@ -421,6 +431,8 @@ async function triggerAiResponse() {
   const c = getActiveContact();
   const u = globalData.user;
   const timeDetails = getUserLocalTimeDetails();
+
+  updateBotStatusIndicator('Typing...');
 
   const lastMsg = c.history[c.history.length - 1];
   if (lastMsg) lastMsg.seen = true;
@@ -451,7 +463,10 @@ CHARACTER PROFILE:
 - Manner of Texting / Quirks: ${c.quirks || 'Texts naturally'}
 - Backstory: ${c.backstory || 'None'}
 - Physical Appearance: ${c.appearance || 'Not specified'}
-
+- Current Activity/Status: ${c.status || 'Just relaxing'} (If user asks what you're doing, refer to this!)
+- Favorite Music/Artists: ${c.music || 'Various genres'} (Use this taste when discussing songs)
+- Daily Routine/Vibe: ${c.routine || 'Normal schedule'}
+${getMemoriesPromptContext(c)}
 REAL-TIME TIME AWARENESS:
 ${timeOfDayContext} (If the user asks what time it is, answer accurately according to this time!).
 
@@ -519,9 +534,11 @@ FORMAT INSTRUCTION:
 
     const chunks = reply.split('|||').map(t => t.trim()).filter(Boolean);
     await deliverBotMessages(c, chunks, typingBubble, usedStickerUrl);
+    updateBotStatusIndicator('');
 
   } catch (err) {
     typingBubble.innerText = "Error connecting to Groq API.";
+    updateBotStatusIndicator('');
   }
 }
 
@@ -812,6 +829,12 @@ function openContactSettingsFor(id) {
   document.getElementById('cs-rel-context').value = c.relationshipContext || '';
   document.getElementById('cs-backstory').value = c.backstory || '';
   document.getElementById('cs-appearance').value = c.appearance || '';
+  document.getElementById('cs-status').value = c.status || '';
+  document.getElementById('cs-music').value = c.music || '';
+  document.getElementById('cs-routine').value = c.routine || '';
+  document.getElementById('cs-mem-date').value = '';
+  document.getElementById('cs-mem-desc').value = '';
+  renderMemoriesList(c);
   document.getElementById('contact-settings-modal').style.display = 'flex';
 }
 
@@ -825,10 +848,67 @@ function saveContactSettings() {
   c.relationshipContext = document.getElementById('cs-rel-context').value;
   c.backstory = document.getElementById('cs-backstory').value;
   c.appearance = document.getElementById('cs-appearance').value;
+  c.status = document.getElementById('cs-status').value;
+  c.music = document.getElementById('cs-music').value;
+  c.routine = document.getElementById('cs-routine').value;
   saveData();
   renderHeader();
   renderContacts();
   closeModal('contact-settings-modal');
+}
+
+// =========================================
+// PER-CHARACTER MEMORIES / CALENDAR EVENTS
+// =========================================
+function renderMemoriesList(c) {
+  const listEl = document.getElementById('cs-memories-list');
+  if (!listEl) return;
+  if (!c.memories) c.memories = [];
+  listEl.innerHTML = '';
+  c.memories.forEach(m => {
+    const item = document.createElement('div');
+    item.className = 'memory-item';
+    item.innerHTML = `<span><b>${m.date}</b>: ${m.description}</span>`;
+    const delBtn = document.createElement('button');
+    delBtn.className = 'memory-del';
+    delBtn.innerText = '✕';
+    delBtn.onclick = () => deleteMemoryEntry(m.id);
+    item.appendChild(delBtn);
+    listEl.appendChild(item);
+  });
+}
+
+function addMemoryEntry() {
+  const c = getActiveContact();
+  const dateInput = document.getElementById('cs-mem-date');
+  const descInput = document.getElementById('cs-mem-desc');
+  const date = dateInput.value.trim();
+  const description = descInput.value.trim();
+  if (!date || !description) {
+    alert('Please fill in both a date and a description for the memory!');
+    return;
+  }
+  if (!c.memories) c.memories = [];
+  c.memories.push({ id: Date.now(), date, description });
+  dateInput.value = '';
+  descInput.value = '';
+  saveData();
+  renderMemoriesList(c);
+}
+
+function deleteMemoryEntry(memoryId) {
+  const c = getActiveContact();
+  if (!c.memories) return;
+  c.memories = c.memories.filter(m => m.id !== memoryId);
+  saveData();
+  renderMemoriesList(c);
+}
+
+function getMemoriesPromptContext(c) {
+  if (!c.memories || c.memories.length === 0) return '';
+  let ctx = '\nMEMORIES & CALENDAR EVENTS:\nYou remember the following past/scheduled events with the user:\n';
+  c.memories.forEach(m => { ctx += `- [${m.date}]: ${m.description}\n`; });
+  return ctx;
 }
 
 function addNewContact() {
@@ -846,6 +926,10 @@ function addNewContact() {
     relationshipPct: 0,
     memoryEnabled: true,
     relationshipContext: '',
+    status: '',
+    music: '',
+    routine: '',
+    memories: [],
     history: [],
     savedStickers: [],
     unreadCount: 0,
@@ -909,143 +993,6 @@ function saveGlobalSettings() {
   saveData();
   closeModal('global-settings-modal');
 }
-
-// --- Debounce & Message Queue State ---
-let messageQueue = [];
-let botReplyTimeout = null;
-const DEBOUNCE_DELAY_MS = 3500; // Waits 3.5 seconds after your last message
-
-// Function called when user sends a message
-function handleUserSendMessage(userText) {
-  if (!userText.trim()) return;
-
-  // 1. Display user message in UI immediately
-  appendMessageToUI('user', userText);
-
-  // 2. Add message to the pending queue
-  messageQueue.push(userText);
-
-  // 3. Clear existing timer if user sent another message quickly
-  if (botReplyTimeout) {
-    clearTimeout(botReplyTimeout);
-  }
-
-  // 4. Show a subtle "typing/waiting" status indicator
-  updateBotStatusIndicator("Waiting for you to finish...");
-
-  // 5. Start a new timer
-  botReplyTimeout = setTimeout(() => {
-    processQueuedMessages();
-  }, DEBOUNCE_DELAY_MS);
-}
-
-// Function triggered when debounce timer expires
-async function processQueuedMessages() {
-  if (messageQueue.length === 0) return;
-
-  // Combine queued messages into one turn or history entry
-  const combinedUserPrompt = messageQueue.join("\n");
-  messageQueue = []; // Clear queue
-
-  updateBotStatusIndicator("Typing...");
-
-  // Send combined messages to Groq API
-  await fetchBotResponse(combinedUserPrompt);
-  
-  updateBotStatusIndicator("Online");
-}
-
-// LocalStorage key for calendar memories
-let calendarEvents = JSON.parse(localStorage.getItem("calendar_memories")) || [];
-
-// Add a new memory event
-function addCalendarEvent(dateTimeStr, description) {
-  const newEvent = {
-    id: Date.now(),
-    date: dateTimeStr,
-    description: description
-  };
-  
-  calendarEvents.push(newEvent);
-  localStorage.setItem("calendar_memories", JSON.stringify(calendarEvents));
-}
-
-// Convert stored events into a clear block of text for the System Prompt
-function getCalendarPromptContext() {
-  if (calendarEvents.length === 0) return "";
-
-  let memoryContext = "\n--- MEMORY & CALENDAR EVENTS ---\n";
-  memoryContext += "You remember the following past/scheduled events with the user:\n";
-
-  calendarEvents.forEach(evt => {
-    memoryContext += `- [${evt.date}]: ${evt.description}\n`;
-  });
-
-  return memoryContext;
-}
-
-function buildSystemPrompt() {
-  // Retrieve settings from UI or localStorage
-  const status = document.getElementById('char-status').value || "Chilling";
-  const music = document.getElementById('char-music').value || "Various genres";
-  const routine = document.getElementById('char-routine').value || "Normal schedule";
-
-  const calendarContext = getCalendarPromptContext();
-
-  const systemMessage = {
-    role: "system",
-    content: `You are roleplaying as a realistic texting character.
-    
---- CHARACTER PERSONAL SETTINGS ---
-- Current Activity: ${status} (If user asks what you are doing, refer to this!)
-- Favorite Music/Artists: ${music} (Use this taste when discussing songs)
-- Routine/Vibe: ${routine}
-
-${calendarContext}
-
---- TEXTING RULES ---
-- Text like a real person in a messaging app.
-- Keep responses natural, conversational, and aligned with your personal settings.`
-  };
-
-  return systemMessage;
-}
-
-// Example API Call Function
-async function fetchBotResponse(userMessage) {
-  const systemPrompt = buildSystemPrompt();
-  
-  const payload = {
-    model: "llama-3.3-70b-versatile", // Or your selected Groq model
-    messages: [
-      systemPrompt,
-      ...chatHistory, // Your existing conversation array
-      { role: "user", content: userMessage }
-    ]
-  };
-
-  try {
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer YOUR_GROQ_API_KEY`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    });
-
-    const data = await response.json();
-    const botReply = data.choices[0].message.content;
-
-    appendMessageToUI('bot', botReply);
-    chatHistory.push({ role: "user", content: userMessage });
-    chatHistory.push({ role: "assistant", content: botReply });
-
-  } catch (error) {
-    console.error("Error fetching bot response:", error);
-  }
-}
-
 
 // =========================================
 // PWA SERVICE WORKER REGISTRATION
