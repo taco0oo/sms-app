@@ -1069,7 +1069,14 @@ function openGlobalSettingsModal() {
 
 function saveGlobalSettings() {
   globalData.apiKey = document.getElementById('gs-api-key').value.trim();
-  globalData.utcOffset = document.getElementById('gs-utc-offset').value;
+
+  const utcRaw = document.getElementById('gs-utc-offset').value.trim();
+  if (utcRaw === '' || !isNaN(parseFloat(utcRaw))) {
+    globalData.utcOffset = utcRaw === '' ? '' : parseFloat(utcRaw);
+  } else {
+    alert('Time zone offset should be a number like -5 or +5.5 — keeping your previous value.');
+  }
+
   const proactiveToggle = document.getElementById('gs-proactive-toggle');
   if (proactiveToggle) globalData.proactiveTextsEnabled = proactiveToggle.checked;
   const notifToggle = document.getElementById('gs-notifications-toggle');
@@ -1091,4 +1098,4 @@ if ('serviceWorker' in navigator) {
       console.log('Service worker registration failed:', err);
     });
   });
-      }
+    }
