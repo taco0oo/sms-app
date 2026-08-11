@@ -910,6 +910,143 @@ function saveGlobalSettings() {
   closeModal('global-settings-modal');
 }
 
+// --- Debounce & Message Queue State ---
+let messageQueue = [];
+let botReplyTimeout = null;
+const DEBOUNCE_DELAY_MS = 3500; // Waits 3.5 seconds after your last message
+
+// Function called when user sends a message
+function handleUserSendMessage(userText) {
+  if (!userText.trim()) return;
+
+  // 1. Display user message in UI immediately
+  appendMessageToUI('user', userText);
+
+  // 2. Add message to the pending queue
+  messageQueue.push(userText);
+
+  // 3. Clear existing timer if user sent another message quickly
+  if (botReplyTimeout) {
+    clearTimeout(botReplyTimeout);
+  }
+
+  // 4. Show a subtle "typing/waiting" status indicator
+  updateBotStatusIndicator("Waiting for you to finish...");
+
+  // 5. Start a new timer
+  botReplyTimeout = setTimeout(() => {
+    processQueuedMessages();
+  }, DEBOUNCE_DELAY_MS);
+}
+
+// Function triggered when debounce timer expires
+async function processQueuedMessages() {
+  if (messageQueue.length === 0) return;
+
+  // Combine queued messages into one turn or history entry
+  const combinedUserPrompt = messageQueue.join("\n");
+  messageQueue = []; // Clear queue
+
+  updateBotStatusIndicator("Typing...");
+
+  // Send combined messages to Groq API
+  await fetchBotResponse(combinedUserPrompt);
+  
+  updateBotStatusIndicator("Online");
+}
+
+// LocalStorage key for calendar memories
+let calendarEvents = JSON.parse(localStorage.getItem("calendar_memories")) || [];
+
+// Add a new memory event
+function addCalendarEvent(dateTimeStr, description) {
+  const newEvent = {
+    id: Date.now(),
+    date: dateTimeStr,
+    description: description
+  };
+  
+  calendarEvents.push(newEvent);
+  localStorage.setItem("calendar_memories", JSON.stringify(calendarEvents));
+}
+
+// Convert stored events into a clear block of text for the System Prompt
+function getCalendarPromptContext() {
+  if (calendarEvents.length === 0) return "";
+
+  let memoryContext = "\n--- MEMORY & CALENDAR EVENTS ---\n";
+  memoryContext += "You remember the following past/scheduled events with the user:\n";
+
+  calendarEvents.forEach(evt => {
+    memoryContext += `- [${evt.date}]: ${evt.description}\n`;
+  });
+
+  return memoryContext;
+}
+
+function buildSystemPrompt() {
+  // Retrieve settings from UI or localStorage
+  const status = document.getElementById('char-status').value || "Chilling";
+  const music = document.getElementById('char-music').value || "Various genres";
+  const routine = document.getElementById('char-routine').value || "Normal schedule";
+
+  const calendarContext = getCalendarPromptContext();
+
+  const systemMessage = {
+    role: "system",
+    content: `You are roleplaying as a realistic texting character.
+    
+--- CHARACTER PERSONAL SETTINGS ---
+- Current Activity: ${status} (If user asks what you are doing, refer to this!)
+- Favorite Music/Artists: ${music} (Use this taste when discussing songs)
+- Routine/Vibe: ${routine}
+
+${calendarContext}
+
+--- TEXTING RULES ---
+- Text like a real person in a messaging app.
+- Keep responses natural, conversational, and aligned with your personal settings.`
+  };
+
+  return systemMessage;
+}
+
+// Example API Call Function
+async function fetchBotResponse(userMessage) {
+  const systemPrompt = buildSystemPrompt();
+  
+  const payload = {
+    model: "llama-3.3-70b-versatile", // Or your selected Groq model
+    messages: [
+      systemPrompt,
+      ...chatHistory, // Your existing conversation array
+      { role: "user", content: userMessage }
+    ]
+  };
+
+  try {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer YOUR_GROQ_API_KEY`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+    const botReply = data.choices[0].message.content;
+
+    appendMessageToUI('bot', botReply);
+    chatHistory.push({ role: "user", content: userMessage });
+    chatHistory.push({ role: "assistant", content: botReply });
+
+  } catch (error) {
+    console.error("Error fetching bot response:", error);
+  }
+}
+
+
 // =========================================
 // PWA SERVICE WORKER REGISTRATION
 // =========================================
