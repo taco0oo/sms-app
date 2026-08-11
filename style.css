@@ -484,42 +484,109 @@ body {
   min-height: 12px;
 }
 
-/* CHARACTER MEMORIES / CALENDAR LIST (inside Character Settings modal) */
+.hidden {
+  display: none;
+}
+
+/* MEMORY CALENDAR */
+.calendar-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.calendar-nav span {
+  font-weight: bold;
+  font-size: 14px;
+  color: var(--text-main);
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.calendar-day-head {
+  text-align: center;
+  font-size: 11px;
+  font-weight: bold;
+  color: var(--text-pale);
+  padding-bottom: 4px;
+}
+
+.calendar-day {
+  position: relative;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text-main);
+  background: var(--drawer-bg);
+  cursor: pointer;
+}
+
+.calendar-day.empty {
+  background: none;
+  cursor: default;
+}
+
+.calendar-day.today {
+  border: 2px solid var(--accent-color);
+  font-weight: bold;
+}
+
+.calendar-day.has-memory {
+  background: var(--accent-color);
+  color: white;
+  font-weight: bold;
+}
+
+.mem-dot {
+  position: absolute;
+  bottom: 4px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: white;
+}
+
+.calendar-day-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--drawer-bg);
+  border: 1px solid #e8c0d5;
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.calendar-day-panel label {
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--text-pale);
+}
+
+.calendar-day-panel textarea {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #e8c0d5;
+  font-size: 13px;
+  resize: vertical;
+  min-height: 50px;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* CHARACTER MEMORIES / CALENDAR LIST (legacy row/list helpers, reused by day panel) */
 .memory-row {
   display: flex;
   gap: 6px;
 }
 
-.memory-row input {
+.memory-row button {
   flex: 1;
-}
-
-.memory-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  max-height: 140px;
-  overflow-y: auto;
-}
-
-.memory-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  background: var(--drawer-bg);
-  border: 1px solid #e8c0d5;
-  border-radius: 10px;
-  padding: 6px 10px;
-  font-size: 12px;
-  color: var(--text-main);
-}
-
-.memory-item .memory-del {
-  background: none;
-  border: none;
-  color: #ff5b8c;
-  font-weight: bold;
-  cursor: pointer;
-  flex-shrink: 0;
 }
