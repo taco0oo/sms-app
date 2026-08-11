@@ -233,7 +233,7 @@
         <input type="password" id="gs-api-key" placeholder="Paste Groq Key here..." />
         
         <label>Your Time Zone Offset (UTC Hours)</label>
-        <input type="number" id="gs-utc-offset" step="0.5" placeholder="e.g. -5 for EST, +5 for PKT, 0 for UTC" />
+        <input type="text" inputmode="text" id="gs-utc-offset" placeholder="e.g. -5 for EST, +5 for PKT, 0 for UTC" />
 
         <label>Chat Background Image (Upload from Gallery)</label>
         <input type="file" accept="image/*" class="file-input" onchange="handleBgUpload(event)" />
@@ -254,3 +254,4 @@
   <script src="script.js"></script>
 </body>
 </html>
+
