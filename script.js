@@ -99,6 +99,7 @@ window.onload = () => {
   renderUserProfileBar();
   renderStickers();
   setupMobileKeyboardResize();
+  document.getElementById('user-input').addEventListener('input', extendReplyWaitIfPending);
 };
 
 function getActiveContact() {
@@ -414,7 +415,8 @@ async function sendMessage() {
 }
 
 let responseDebounceTimer = null;
-const RESPONSE_DEBOUNCE_MS = 3500; // waits this long after your last message before replying
+let awaitingReply = false;
+const RESPONSE_DEBOUNCE_MS = 3500; // waits this long after your last message/keystroke before replying
 
 function updateBotStatusIndicator(text) {
   const el = document.getElementById('bot-status-indicator');
@@ -422,12 +424,24 @@ function updateBotStatusIndicator(text) {
 }
 
 function queueAiResponse() {
+  awaitingReply = true;
+  clearTimeout(responseDebounceTimer);
+  updateBotStatusIndicator('Waiting for you to finish...');
+  responseDebounceTimer = setTimeout(() => { triggerAiResponse(); }, RESPONSE_DEBOUNCE_MS);
+}
+
+// Called on every keystroke in the input box. If a reply is pending, typing
+// (even without sending) pushes the reply back so the bot doesn't answer
+// mid-thought.
+function extendReplyWaitIfPending() {
+  if (!awaitingReply) return;
   clearTimeout(responseDebounceTimer);
   updateBotStatusIndicator('Waiting for you to finish...');
   responseDebounceTimer = setTimeout(() => { triggerAiResponse(); }, RESPONSE_DEBOUNCE_MS);
 }
 
 async function triggerAiResponse() {
+  awaitingReply = false;
   const c = getActiveContact();
   const u = globalData.user;
   const timeDetails = getUserLocalTimeDetails();
@@ -829,12 +843,6 @@ function openContactSettingsFor(id) {
   document.getElementById('cs-rel-context').value = c.relationshipContext || '';
   document.getElementById('cs-backstory').value = c.backstory || '';
   document.getElementById('cs-appearance').value = c.appearance || '';
-  document.getElementById('cs-status').value = c.status || '';
-  document.getElementById('cs-music').value = c.music || '';
-  document.getElementById('cs-routine').value = c.routine || '';
-  document.getElementById('cs-mem-date').value = '';
-  document.getElementById('cs-mem-desc').value = '';
-  renderMemoriesList(c);
   document.getElementById('contact-settings-modal').style.display = 'flex';
 }
 
@@ -848,9 +856,6 @@ function saveContactSettings() {
   c.relationshipContext = document.getElementById('cs-rel-context').value;
   c.backstory = document.getElementById('cs-backstory').value;
   c.appearance = document.getElementById('cs-appearance').value;
-  c.status = document.getElementById('cs-status').value;
-  c.music = document.getElementById('cs-music').value;
-  c.routine = document.getElementById('cs-routine').value;
   saveData();
   renderHeader();
   renderContacts();
@@ -858,56 +863,139 @@ function saveContactSettings() {
 }
 
 // =========================================
-// PER-CHARACTER MEMORIES / CALENDAR EVENTS
+// PERSONAL DOSSIER (status / music / routine)
 // =========================================
-function renderMemoriesList(c) {
-  const listEl = document.getElementById('cs-memories-list');
-  if (!listEl) return;
+function openPersonalDossierModal() {
+  document.getElementById('quick-edit-pop').style.display = 'none';
+  const c = getActiveContact();
+  document.getElementById('pd-status').value = c.status || '';
+  document.getElementById('pd-music').value = c.music || '';
+  document.getElementById('pd-routine').value = c.routine || '';
+  document.getElementById('personal-dossier-modal').style.display = 'flex';
+}
+
+function savePersonalDossier() {
+  const c = getActiveContact();
+  c.status = document.getElementById('pd-status').value;
+  c.music = document.getElementById('pd-music').value;
+  c.routine = document.getElementById('pd-routine').value;
+  saveData();
+  closeModal('personal-dossier-modal');
+}
+
+// =========================================
+// PER-CHARACTER MEMORY CALENDAR
+// =========================================
+let calendarViewYear, calendarViewMonth;
+
+function openCalendarModal() {
+  const now = new Date();
+  calendarViewYear = now.getFullYear();
+  calendarViewMonth = now.getMonth();
+  const panel = document.getElementById('calendar-day-panel');
+  panel.classList.add('hidden');
+  panel.innerHTML = '';
+  renderCalendarGrid();
+  document.getElementById('calendar-modal').style.display = 'flex';
+}
+
+function changeCalendarMonth(delta) {
+  calendarViewMonth += delta;
+  if (calendarViewMonth < 0) { calendarViewMonth = 11; calendarViewYear--; }
+  if (calendarViewMonth > 11) { calendarViewMonth = 0; calendarViewYear++; }
+  document.getElementById('calendar-day-panel').classList.add('hidden');
+  renderCalendarGrid();
+}
+
+function renderCalendarGrid() {
+  const c = getActiveContact();
   if (!c.memories) c.memories = [];
-  listEl.innerHTML = '';
-  c.memories.forEach(m => {
-    const item = document.createElement('div');
-    item.className = 'memory-item';
-    item.innerHTML = `<span><b>${m.date}</b>: ${m.description}</span>`;
-    const delBtn = document.createElement('button');
-    delBtn.className = 'memory-del';
-    delBtn.innerText = '✕';
-    delBtn.onclick = () => deleteMemoryEntry(m.id);
-    item.appendChild(delBtn);
-    listEl.appendChild(item);
+
+  const label = new Date(calendarViewYear, calendarViewMonth, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  document.getElementById('calendar-month-label').innerText = label;
+
+  const grid = document.getElementById('calendar-grid');
+  grid.innerHTML = '';
+
+  ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach(d => {
+    const head = document.createElement('div');
+    head.className = 'calendar-day-head';
+    head.innerText = d;
+    grid.appendChild(head);
   });
-}
 
-function addMemoryEntry() {
-  const c = getActiveContact();
-  const dateInput = document.getElementById('cs-mem-date');
-  const descInput = document.getElementById('cs-mem-desc');
-  const date = dateInput.value.trim();
-  const description = descInput.value.trim();
-  if (!date || !description) {
-    alert('Please fill in both a date and a description for the memory!');
-    return;
+  const firstDay = new Date(calendarViewYear, calendarViewMonth, 1).getDay();
+  const daysInMonth = new Date(calendarViewYear, calendarViewMonth + 1, 0).getDate();
+  const now = new Date();
+  const todayISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+  for (let i = 0; i < firstDay; i++) {
+    const blank = document.createElement('div');
+    blank.className = 'calendar-day empty';
+    grid.appendChild(blank);
   }
-  if (!c.memories) c.memories = [];
-  c.memories.push({ id: Date.now(), date, description });
-  dateInput.value = '';
-  descInput.value = '';
-  saveData();
-  renderMemoriesList(c);
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateISO = `${calendarViewYear}-${String(calendarViewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const cell = document.createElement('div');
+    cell.className = 'calendar-day';
+    if (dateISO === todayISO) cell.classList.add('today');
+    const hasMemory = c.memories.some(m => m.dateISO === dateISO);
+    if (hasMemory) cell.classList.add('has-memory');
+    cell.innerHTML = `<span>${day}</span>${hasMemory ? '<div class="mem-dot"></div>' : ''}`;
+    cell.onclick = () => openCalendarDayPanel(dateISO);
+    grid.appendChild(cell);
+  }
 }
 
-function deleteMemoryEntry(memoryId) {
+function openCalendarDayPanel(dateISO) {
   const c = getActiveContact();
-  if (!c.memories) return;
-  c.memories = c.memories.filter(m => m.id !== memoryId);
-  saveData();
-  renderMemoriesList(c);
+  if (!c.memories) c.memories = [];
+  const panel = document.getElementById('calendar-day-panel');
+  panel.classList.remove('hidden');
+
+  const existing = c.memories.find(m => m.dateISO === dateISO);
+  const displayDate = new Date(dateISO + 'T00:00:00').toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
+
+  panel.innerHTML = `
+    <label>${displayDate}</label>
+    <textarea id="calendar-desc-input" rows="2" placeholder="What happened / is planned?">${existing ? existing.description : ''}</textarea>
+    <div class="memory-row">
+      <button class="save-btn" id="calendar-save-btn">${existing ? 'Update' : 'Add'} Date</button>
+      ${existing ? '<button class="danger-btn" id="calendar-del-btn">Delete</button>' : ''}
+    </div>
+  `;
+
+  document.getElementById('calendar-save-btn').onclick = () => {
+    const desc = document.getElementById('calendar-desc-input').value.trim();
+    if (!desc) { alert('Please write something for this date!'); return; }
+    if (existing) {
+      existing.description = desc;
+    } else {
+      c.memories.push({ id: Date.now(), dateISO, description: desc });
+    }
+    saveData();
+    renderCalendarGrid();
+    panel.classList.add('hidden');
+  };
+
+  if (existing) {
+    document.getElementById('calendar-del-btn').onclick = () => {
+      c.memories = c.memories.filter(m => m.id !== existing.id);
+      saveData();
+      renderCalendarGrid();
+      panel.classList.add('hidden');
+    };
+  }
 }
 
 function getMemoriesPromptContext(c) {
   if (!c.memories || c.memories.length === 0) return '';
   let ctx = '\nMEMORIES & CALENDAR EVENTS:\nYou remember the following past/scheduled events with the user:\n';
-  c.memories.forEach(m => { ctx += `- [${m.date}]: ${m.description}\n`; });
+  c.memories.forEach(m => {
+    const label = m.dateISO ? new Date(m.dateISO + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : (m.date || '');
+    ctx += `- [${label}]: ${m.description}\n`;
+  });
   return ctx;
 }
 
@@ -1003,4 +1091,4 @@ if ('serviceWorker' in navigator) {
       console.log('Service worker registration failed:', err);
     });
   });
-}
+      }
