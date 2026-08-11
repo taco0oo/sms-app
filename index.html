@@ -54,11 +54,13 @@
         <div class="quick-edit-pop" id="quick-edit-pop">
           <button class="icon-btn" onclick="openQuickEditModal()" title="Edit PFP & Nickname">✎</button>
           <button class="icon-btn" onclick="openContactSettingsModal()" title="Edit AI Persona">⚙︎</button>
+          <button class="icon-btn" onclick="openPersonalDossierModal()" title="Personal Dossier">🪪</button>
         </div>
       </div>
 
       <div class="header-right">
         <span id="rel-meter-percent" style="font-size:11px; font-weight:bold; color:var(--text-pale)">0%</span>
+        <button class="icon-btn" onclick="openCalendarModal()" title="Memory Calendar">📅</button>
         <button class="icon-btn" onclick="openGlobalSettingsModal()">⋮</button>
       </div>
     </div>
@@ -170,24 +172,38 @@
         <textarea id="cs-backstory"></textarea>
         <label>Physical Appearance</label>
         <textarea id="cs-appearance" placeholder="e.g. Black hair, tall, wears hoodies"></textarea>
-
-        <label>Current Activity / Status</label>
-        <input type="text" id="cs-status" placeholder="e.g., Studying at the library, Drinking coffee">
-        <label>Favorite Music / Bands</label>
-        <textarea id="cs-music" rows="2" placeholder="e.g., Indie rock, Arctic Monkeys, Radiohead"></textarea>
-        <label>Daily Routine & Vibe</label>
-        <textarea id="cs-routine" rows="2" placeholder="e.g., Night owl, gets sleepy after 11 PM, hates mornings"></textarea>
-
-        <label>Memories / Calendar Events</label>
-        <div class="memory-list" id="cs-memories-list"></div>
-        <div class="memory-row">
-          <input type="text" id="cs-mem-date" placeholder="Date (e.g. Aug 20)" />
-          <input type="text" id="cs-mem-desc" placeholder="What happened / is planned" />
-        </div>
-        <button class="close-btn" onclick="addMemoryEntry()">+ Add Memory</button>
-
         <button class="save-btn" onclick="saveContactSettings()">Save Persona</button>
         <button class="close-btn" onclick="closeModal('contact-settings-modal')">Cancel</button>
+      </div>
+    </div>
+
+    <!-- MODAL: PERSONAL DOSSIER (status / music / routine) -->
+    <div class="modal" id="personal-dossier-modal">
+      <div class="modal-content">
+        <h3>🪪 Personal Dossier</h3>
+        <label>Current Activity / Status</label>
+        <input type="text" id="pd-status" placeholder="e.g., Studying at the library, Drinking coffee">
+        <label>Favorite Music / Bands</label>
+        <textarea id="pd-music" rows="2" placeholder="e.g., Indie rock, Arctic Monkeys, Radiohead"></textarea>
+        <label>Daily Routine & Vibe</label>
+        <textarea id="pd-routine" rows="2" placeholder="e.g., Night owl, gets sleepy after 11 PM, hates mornings"></textarea>
+        <button class="save-btn" onclick="savePersonalDossier()">Save</button>
+        <button class="close-btn" onclick="closeModal('personal-dossier-modal')">Cancel</button>
+      </div>
+    </div>
+
+    <!-- MODAL: MEMORY CALENDAR -->
+    <div class="modal" id="calendar-modal">
+      <div class="modal-content">
+        <h3>📅 Memory Calendar</h3>
+        <div class="calendar-nav">
+          <button class="icon-btn" onclick="changeCalendarMonth(-1)">‹</button>
+          <span id="calendar-month-label"></span>
+          <button class="icon-btn" onclick="changeCalendarMonth(1)">›</button>
+        </div>
+        <div class="calendar-grid" id="calendar-grid"></div>
+        <div class="calendar-day-panel hidden" id="calendar-day-panel"></div>
+        <button class="close-btn" onclick="closeModal('calendar-modal')">Close</button>
       </div>
     </div>
 
@@ -238,4 +254,3 @@
   <script src="script.js"></script>
 </body>
 </html>
-
