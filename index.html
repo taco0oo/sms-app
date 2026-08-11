@@ -47,6 +47,7 @@
             <div class="rel-meter-container" title="Relationship Warmth">
               <div class="rel-meter-fill" id="rel-meter-bar"></div>
             </div>
+            <div class="bot-status-indicator" id="bot-status-indicator"></div>
           </div>
         </div>
 
@@ -169,6 +170,22 @@
         <textarea id="cs-backstory"></textarea>
         <label>Physical Appearance</label>
         <textarea id="cs-appearance" placeholder="e.g. Black hair, tall, wears hoodies"></textarea>
+
+        <label>Current Activity / Status</label>
+        <input type="text" id="cs-status" placeholder="e.g., Studying at the library, Drinking coffee">
+        <label>Favorite Music / Bands</label>
+        <textarea id="cs-music" rows="2" placeholder="e.g., Indie rock, Arctic Monkeys, Radiohead"></textarea>
+        <label>Daily Routine & Vibe</label>
+        <textarea id="cs-routine" rows="2" placeholder="e.g., Night owl, gets sleepy after 11 PM, hates mornings"></textarea>
+
+        <label>Memories / Calendar Events</label>
+        <div class="memory-list" id="cs-memories-list"></div>
+        <div class="memory-row">
+          <input type="text" id="cs-mem-date" placeholder="Date (e.g. Aug 20)" />
+          <input type="text" id="cs-mem-desc" placeholder="What happened / is planned" />
+        </div>
+        <button class="close-btn" onclick="addMemoryEntry()">+ Add Memory</button>
+
         <button class="save-btn" onclick="saveContactSettings()">Save Persona</button>
         <button class="close-btn" onclick="closeModal('contact-settings-modal')">Cancel</button>
       </div>
@@ -192,38 +209,7 @@
         <button class="save-btn" onclick="saveUserProfile()">Save Profile</button>
         <button class="close-btn" onclick="closeModal('user-modal')">Cancel</button>
       </div>
-    </div>
-<!-- Personal Settings Modal / Tab -->
-<div id="personal-settings-tab" class="settings-modal hidden">
-  <div class="modal-header">
-    <h3>🪪 Personal Dossier</h3>
-    <button id="close-settings-btn" onclick="togglePersonalSettings()">✕</button>
-  </div>
-
-  <div class="modal-body">
-    <!-- Current Activity -->
-    <div class="input-group">
-      <label for="char-status">Current Activity / Status</label>
-      <input type="text" id="char-status" placeholder="e.g., Studying at the library, Drinking coffee">
-    </div>
-
-    <!-- Music Taste -->
-    <div class="input-group">
-      <label for="char-music">Favorite Music / Bands</label>
-      <textarea id="char-music" rows="2" placeholder="e.g., Indie rock, Arctic Monkeys, Radiohead"></textarea>
-    </div>
-
-    <!-- Daily Routine / Habits -->
-    <div class="input-group">
-      <label for="char-routine">Daily Routine & Vibe</label>
-      <textarea id="char-routine" rows="2" placeholder="e.g., Night owl, gets sleepy after 11 PM, hates mornings"></textarea>
-    </div>
-
-    <button class="save-btn" onclick="savePersonalSettings()">Save Settings</button>
-  </div>
-</div>
-
-    <!-- MODAL: GLOBAL SETTINGS -->
+    </div>    <!-- MODAL: GLOBAL SETTINGS -->
     <div class="modal" id="global-settings-modal">
       <div class="modal-content">
         <h3>Global Settings ⚙︎</h3>
@@ -252,3 +238,4 @@
   <script src="script.js"></script>
 </body>
 </html>
+
