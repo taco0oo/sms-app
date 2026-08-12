@@ -48,6 +48,25 @@ function saveData() {
   localStorage.setItem('cute_sms_data', JSON.stringify(globalData));
 }
 
+// --- ADD: helper to expand {user} / {char} placeholders ---
+function expandPlaceholders(text, contact) {
+  if (!text || typeof text !== 'string') return '';
+  const u = globalData.user || { name: 'User', nicknames: '' };
+  const userName = u.name || 'User';
+  const userNick = (u.nicknames || '').split(';')[0]?.trim() || userName;
+  const userPronouns = u.pronouns || '';
+  const charName = (contact && (contact.origName || '')) || '';
+  const charNick = (contact && (contact.nickname || charName)) || charName;
+
+  return text
+    .replace(/\{user_nick\}/gi, userNick)
+    .replace(/\{user_pronouns\}/gi, userPronouns)
+    .replace(/\{user\}/gi, userName)
+    .replace(/\{char_nick\}/gi, charNick)
+    .replace(/\{char\}/gi, charName);
+}
+// --- END helper ---
+
 function requestNotificationPermission() {
   if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
     Notification.requestPermission();
@@ -455,7 +474,7 @@ async function triggerAiResponse() {
   const typingBubble = appendTypingDots();
 
   const savedStickerOptions = (c.savedStickers && c.savedStickers.length > 0)
-    ? `\nAVAILABLE STICKERS YOU HAVE SAVED/STOLEN FROM USER:\n` + c.savedStickers.map((s, idx) => `[STICKER_INDEX:${idx}] - "${s.name}" (${s.desc})`).join('\n') + `\nUse [USE_STICKER:index] ONLY if relevant. Do NOT send stickers in every message.`
+    ? `\nAVAILABLE STICKERS YOU HAVE SAVED/STOLEN FROM USER:\n` + c.savedStickers.map((s, idx) => `[STICKER_INDEX:${idx}] - "${s.name}" (${s.desc})`).join('\n') + `\nUse [USE_STICKER:index] ONLY if required.`
     : '';
 
   let timeOfDayContext = `The current local time is ${timeDetails.formattedTime}.`;
@@ -465,41 +484,54 @@ async function triggerAiResponse() {
     timeOfDayContext += ` It's early morning. You might be getting ready, tired, or waking up.`;
   }
 
-  const notesContext = c.notes ? `\nCHARACTER IMPORTANT NOTES & FACTS:\n${c.notes}\n` : '';
+  // --- EXPAND placeholders in contact fields so the model sees concrete roles (char / user) ---
+  const expanded = {
+    personality: expandPlaceholders(c.personality || '', c),
+    environment: expandPlaceholders(c.environment || '', c),
+    quirks: expandPlaceholders(c.quirks || '', c),
+    backstory: expandPlaceholders(c.backstory || '', c),
+    appearance: expandPlaceholders(c.appearance || '', c),
+    status: expandPlaceholders(c.status || '', c),
+    music: expandPlaceholders(c.music || '', c),
+    routine: expandPlaceholders(c.routine || '', c),
+    notes: expandPlaceholders(c.notes || '', c),
+    relationshipContext: expandPlaceholders(c.relationshipContext || '', c)
+  };
+  // --- END expansion ---
 
   const systemPrompt = `
-You are roleplaying as ${c.origName} in a custom SMS app.
-${c.nickname ? `User calls you "${c.nickname}".` : ''}
+ You are roleplaying as ${c.origName} in a custom SMS app.
+ ${c.nickname ? `User calls you "${c.nickname}".` : ''}
 
-CHARACTER PROFILE:
-- Personality: ${c.personality || 'Friendly'}
-- Current Situation / Environment: ${c.environment || 'Just hanging out.'}
-- Manner of Texting / Quirks: ${c.quirks || 'Texts naturally'}
-- Backstory: ${c.backstory || 'None'}
-- Physical Appearance: ${c.appearance || 'Not specified'}
-- Current Activity/Status: ${c.status || 'Just relaxing'} (If user asks what you're doing, refer to this!)
-- Favorite Music/Artists: ${c.music || 'Various genres'} (Use this taste when discussing songs)
-- Daily Routine/Vibe: ${c.routine || 'Normal schedule'}
-${notesContext}${getMemoriesPromptContext(c)}
-REAL-TIME TIME AWARENESS:
-${timeOfDayContext} (If the user asks what time it is, answer accurately according to this time!).
+ CHARACTER PROFILE:
+ - Personality: ${expanded.personality || 'Friendly'}
+ - Current Situation / Environment: ${expanded.environment || 'Just hanging out.'}
+ - Manner of Texting / Quirks: ${expanded.quirks || 'Texts naturally'}
+ - Backstory: ${expanded.backstory || 'None'}
+ - Physical Appearance: ${expanded.appearance || 'Not specified'}
+ - Current Activity/Status: ${expanded.status || 'Just relaxing'} (If user asks what you're doing, refer to this!)
+ - Favorite Music/Artists: ${expanded.music || 'Various genres'} (Use this taste when discussing songs)
+ - Daily Routine/Vibe: ${expanded.routine || 'Normal schedule'}
+ ${expanded.notes ? `\nCHARACTER IMPORTANT NOTES & FACTS:\n${expanded.notes}\n` : ''}${getMemoriesPromptContext(c)}
+ REAL-TIME TIME AWARENESS:
+ ${timeOfDayContext} (If the user asks what time it is, answer accurately according to this time!).
 
-RELATIONSHIP WARMTH LEVEL: ${c.relationshipPct || 0}% (out of 100%).
+ RELATIONSHIP WARMTH LEVEL: ${c.relationshipPct || 0}% (out of 100%).
 
-${c.memoryEnabled ? `CALLBACK MEMORIES & SHARED HISTORY:
-- ${c.relationshipContext || 'Shared past experiences'}` : ''}
+ ${c.memoryEnabled ? `CALLBACK MEMORIES & SHARED HISTORY:
+ - ${expanded.relationshipContext || (c.relationshipContext || 'Shared past experiences')}` : ''}
 
-USER PROFILE:
-- Name: ${u.name} (${u.nicknames})
-- Pronouns: ${u.pronouns}
-- User Context: ${u.appearance}
-${savedStickerOptions}
+ USER PROFILE:
+ - Name: ${u.name} (${u.nicknames})
+ - Pronouns: ${u.pronouns}
+ - User Context: ${u.appearance}
+ ${savedStickerOptions}
 
-FORMAT INSTRUCTION:
-1. Judge how warm, thoughtful, and engaged the user's LATEST message(s) were. Output tag: [RELATIONSHIP_DELTA: +0.7]
-2. Use stickers sparingly. If using a saved sticker, include [USE_STICKER:index] at the end.
-3. Use ||| to split multiple texts if character quirks warrant it.
-  `;
+ FORMAT INSTRUCTION:
+ 1. Judge how warm, thoughtful, and engaged the user's LATEST message(s) were. Output tag: [RELATIONSHIP_DELTA: +0.7]
+ 2. Use stickers sparingly. If using a saved sticker, include [USE_STICKER:index] at the end.
+ 3. Use ||| to split multiple texts if character quirks warrant it.
+   `;
 
   // CLEAN HISTORY: Remove raw [USE_STICKER] tags so Llama doesn't get trapped in a loop!
   const cleanedHistory = c.history.map(h => {
@@ -633,13 +665,17 @@ async function sendProactiveMessage(c, quietForMs) {
     ? `It's been a long time (${Math.round(quietHours)}+ hours) — express impatience, concern, or teasing naturally.`
     : `It's been an hour — keep it casual and light.`;
 
+  // expand placeholders for proactive messages too
+  const personality = expandPlaceholders(c.personality || '', c);
+  const environment = expandPlaceholders(c.environment || '', c);
+
   const systemPrompt = `
-You are roleplaying as ${c.origName}. You are texting ${u.name} first after a period of silence.
-CHARACTER PROFILE: ${c.personality}
-ENVIRONMENT: ${c.environment || 'Hanging out'}
-TIME: ${timeDetails.formattedTime}
-SILENCE CONTEXT: ${moodHint}
-  `;
+ You are roleplaying as ${c.origName}. You are texting ${u.name} first after a period of silence.
+ CHARACTER PROFILE: ${personality}
+ ENVIRONMENT: ${environment || 'Hanging out'}
+ TIME: ${timeDetails.formattedTime}
+ SILENCE CONTEXT: ${moodHint}
+   `;
 
   const apiMessages = [
     { role: 'system', content: systemPrompt },
@@ -1014,7 +1050,9 @@ function getMemoriesPromptContext(c) {
   let ctx = '\nMEMORIES & CALENDAR EVENTS:\nYou remember the following past/scheduled events with the user:\n';
   c.memories.forEach(m => {
     const label = m.dateISO ? new Date(m.dateISO + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : (m.date || '');
-    ctx += `- [${label}]: ${m.description}\n`;
+    // expand placeholders inside memory descriptions too:
+    const desc = expandPlaceholders(m.description || '', c);
+    ctx += `- [${label}]: ${desc}\n`;
   });
   return ctx;
 }
