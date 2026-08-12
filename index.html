@@ -247,37 +247,43 @@
     </div>
 
     <!-- MODAL: GLOBAL SETTINGS -->
-<div class="modal" id="global-settings-modal">
-  <div class="modal-content">
-    <h3>Global Settings ⚙︎</h3>
-    <label>Groq API Key</label>
-    <input type="password" id="gs-api-key" placeholder="Paste Groq Key here..." />
-    
-    <!-- MODEL SELECTOR -->
-    <label>AI Model</label>
-    <div id="model-toggle-group" style="display:flex; gap:8px; margin-bottom:4px;">
-      <button type="button" class="model-toggle-btn" data-model="llama-3.3-70b-versatile" onclick="selectGroqModel('llama-3.3-70b-versatile')" style="flex:1; padding:10px 6px; border-radius:8px; border:2px solid var(--border-color); background:var(--bg-card); color:var(--text-main); font-size:12px; font-weight:bold; cursor:pointer; line-height:1.4;">🧠 Llama 3.3 70B<br><span style="font-weight:normal; font-size:10px;">Smartest</span></button>
-      <button type="button" class="model-toggle-btn" data-model="llama-3.1-8b-instant" onclick="selectGroqModel('llama-3.1-8b-instant')" style="flex:1; padding:10px 6px; border-radius:8px; border:2px solid var(--border-color); background:var(--bg-card); color:var(--text-main); font-size:12px; font-weight:bold; cursor:pointer; line-height:1.4;">⚡ Llama 3.1 8B<br><span style="font-weight:normal; font-size:10px;">Fastest</span></button>
+    <div class="modal" id="global-settings-modal">
+      <div class="modal-content">
+        <h3>Global Settings ⚙︎</h3>
+        <label>Groq API Key</label>
+        <input type="password" id="gs-api-key" placeholder="Paste Groq Key here..." />
+        
+        <!-- MODEL SELECTOR -->
+        <label>AI Model</label>
+        <div id="model-toggle-group" style="display:flex; gap:8px; margin-bottom:4px;">
+          <button type="button" class="model-toggle-btn" data-model="llama-3.3-70b-versatile" onclick="selectGroqModel('llama-3.3-70b-versatile')" style="flex:1; padding:10px 6px; border-radius:8px; border:2px solid #ccc; background:white; color:var(--text-main); cursor:pointer; font-size:12px; font-weight:bold;">Llama 3.3 70B</button>
+          <button type="button" class="model-toggle-btn" data-model="llama-3.1-8b-instant" onclick="selectGroqModel('llama-3.1-8b-instant')" style="flex:1; padding:10px 6px; border-radius:8px; border:2px solid #ccc; background:white; color:var(--text-main); cursor:pointer; font-size:12px; font-weight:bold;">Llama 3.1 8B</button>
+        </div>
+        <input type="hidden" id="gs-model-select" value="llama-3.3-70b-versatile" />
+
+        <p id="model-info-note" style="font-size:11px; color:var(--text-pale); margin-bottom:12px; background:rgba(0,0,0,0.03); padding:8px; border-radius:6px; line-height:1.3;"></p>
+
+        <label>Your Time Zone Offset (UTC Hours)</label>
+        <input type="text" inputmode="text" id="gs-utc-offset" placeholder="e.g. -5 for EST, +5 for PKT, 0 for UTC" />
+
+        <label>Chat Background Image (Upload from Gallery)</label>
+        <input type="file" accept="image/*" class="file-input" onchange="handleBgUpload(event)" />
+        
+        <label style="display:flex; align-items:center; gap:8px; margin-top:10px; font-size:13px; color:var(--text-main);">
+          <input type="checkbox" id="gs-proactive-toggle" /> Let contacts text you first when you've been away
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; margin-top:6px; font-size:13px; color:var(--text-main);">
+          <input type="checkbox" id="gs-notifications-toggle" /> Enable desktop/system notifications when texted
+        </label>
+        
+        <button class="save-btn" onclick="saveGlobalSettings()">Save Settings</button>
+        <button class="danger-btn" onclick="clearCurrentChat()">Clear Current Chat History 🗑️</button>
+        <button class="close-btn" onclick="closeModal('global-settings-modal')">Cancel</button>
+      </div>
     </div>
-    <input type="hidden" id="gs-model-select" value="llama-3.3-70b-versatile" />
 
-    <p id="model-info-note" style="font-size:11px; color:var(--text-pale); margin-bottom:12px; background:rgba(0,0,0,0.03); padding:8px; border-radius:6px; line-height:1.3;"></p>
-
-    <label>Your Time Zone Offset (UTC Hours)</label>
-    <input type="text" inputmode="text" id="gs-utc-offset" placeholder="e.g. -5 for EST, +5 for PKT, 0 for UTC" />
-
-    <label>Chat Background Image (Upload from Gallery)</label>
-    <input type="file" accept="image/*" class="file-input" onchange="handleBgUpload(event)" />
-    
-    <label style="display:flex; align-items:center; gap:8px; margin-top:10px; font-size:13px; color:var(--text-main);">
-      <input type="checkbox" id="gs-proactive-toggle" /> Let contacts text you first when you've been away
-    </label>
-    <label style="display:flex; align-items:center; gap:8px; margin-top:6px; font-size:13px; color:var(--text-main);">
-      <input type="checkbox" id="gs-notifications-toggle" /> Enable desktop/system notifications when texted
-    </label>
-    
-    <button class="save-btn" onclick="saveGlobalSettings()">Save Settings</button>
-    <button class="danger-btn" onclick="clearCurrentChat()">Clear Current Chat History 🗑️</button>
-    <button class="close-btn" onclick="closeModal('global-settings-modal')">Cancel</button>
   </div>
-</div>
+
+  <script src="script.js"></script>
+</body>
+</html>
