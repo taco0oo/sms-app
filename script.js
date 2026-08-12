@@ -1078,6 +1078,17 @@ function saveUserProfile() {
 }
 
 // Global Settings
+function selectGroqModel(modelId) {
+  const hidden = document.getElementById('gs-model-select');
+  if (hidden) hidden.value = modelId;
+
+  document.querySelectorAll('.model-toggle-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.model === modelId);
+  });
+
+  updateModelInfoNote();
+}
+
 function updateModelInfoNote() {
   const select = document.getElementById('gs-model-select');
   const noteEl = document.getElementById('model-info-note');
@@ -1096,8 +1107,7 @@ function openGlobalSettingsModal() {
   
   const modelSelect = document.getElementById('gs-model-select');
   if (modelSelect) {
-    modelSelect.value = globalData.selectedModel || 'llama-3.3-70b-versatile';
-    updateModelInfoNote();
+    selectGroqModel(globalData.selectedModel || 'llama-3.3-70b-versatile');
   }
 
   const proactiveToggle = document.getElementById('gs-proactive-toggle');
