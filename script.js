@@ -1,9 +1,9 @@
-
 // =========================================
 // STATE & STORAGE
 // =========================================
 let globalData = JSON.parse(localStorage.getItem('cute_sms_data')) || {
   apiKey: '',
+  selectedModel: 'llama-3.3-70b-versatile',
   bgUrl: '',
   activeContactId: 1,
   utcOffset: 0,
@@ -523,7 +523,7 @@ FORMAT INSTRUCTION:
         "Authorization": `Bearer ${globalData.apiKey}`
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: globalData.selectedModel || "llama-3.3-70b-versatile",
         messages: apiMessages,
         temperature: 0.7
       })
@@ -655,7 +655,7 @@ SILENCE CONTEXT: ${moodHint}
         "Authorization": `Bearer ${globalData.apiKey}`
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: globalData.selectedModel || "llama-3.3-70b-versatile",
         messages: apiMessages,
         temperature: 0.8
       })
@@ -1078,18 +1078,44 @@ function saveUserProfile() {
 }
 
 // Global Settings
+function updateModelInfoNote() {
+  const select = document.getElementById('gs-model-select');
+  const noteEl = document.getElementById('model-info-note');
+  if (!select || !noteEl) return;
+
+  if (select.value === 'llama-3.1-8b-instant') {
+    noteEl.innerHTML = `⚡ <strong>Llama 3.1 8B:</strong> 500,000 tokens/day limit (~14,400 messages/day). Great for long daily chats!`;
+  } else {
+    noteEl.innerHTML = `🧠 <strong>Llama 3.3 70B:</strong> 100,000 tokens/day limit (~1,000 requests/day). Highest quality replies, but burns context faster.`;
+  }
+}
+
 function openGlobalSettingsModal() {
   document.getElementById('gs-api-key').value = globalData.apiKey || '';
   document.getElementById('gs-utc-offset').value = globalData.utcOffset !== undefined ? globalData.utcOffset : '';
+  
+  const modelSelect = document.getElementById('gs-model-select');
+  if (modelSelect) {
+    modelSelect.value = globalData.selectedModel || 'llama-3.3-70b-versatile';
+    updateModelInfoNote();
+  }
+
   const proactiveToggle = document.getElementById('gs-proactive-toggle');
   if (proactiveToggle) proactiveToggle.checked = globalData.proactiveTextsEnabled !== false;
+  
   const notifToggle = document.getElementById('gs-notifications-toggle');
   if (notifToggle) notifToggle.checked = globalData.notificationsEnabled !== false;
+  
   document.getElementById('global-settings-modal').style.display = 'flex';
 }
 
 function saveGlobalSettings() {
   globalData.apiKey = document.getElementById('gs-api-key').value.trim();
+
+  const modelSelect = document.getElementById('gs-model-select');
+  if (modelSelect) {
+    globalData.selectedModel = modelSelect.value;
+  }
 
   const utcRaw = document.getElementById('gs-utc-offset').value.trim();
   if (utcRaw === '' || !isNaN(parseFloat(utcRaw))) {
@@ -1100,11 +1126,13 @@ function saveGlobalSettings() {
 
   const proactiveToggle = document.getElementById('gs-proactive-toggle');
   if (proactiveToggle) globalData.proactiveTextsEnabled = proactiveToggle.checked;
+  
   const notifToggle = document.getElementById('gs-notifications-toggle');
   if (notifToggle) {
     globalData.notificationsEnabled = notifToggle.checked;
     if (globalData.notificationsEnabled) requestNotificationPermission();
   }
+  
   document.getElementById('chat-box').style.backgroundImage = globalData.bgUrl ? `url('${globalData.bgUrl}')` : 'none';
   saveData();
   closeModal('global-settings-modal');
