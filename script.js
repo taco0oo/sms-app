@@ -500,8 +500,31 @@ async function triggerAiResponse() {
   // --- END expansion ---
 
   const systemPrompt = `
- You are roleplaying as ${c.origName} in a custom SMS app.
+ You are roleplaying AS ${c.origName} in a plain SMS conversation with ${u.name}.
  ${c.nickname ? `User calls you "${c.nickname}".` : ''}
+
+ IMPORTANT — FOLLOW THESE SMS RULES STRICTLY:
+
+ 1) ADDRESS THE USER DIRECTLY:
+ - Always write as if texting the user right now. Use first-person for yourself ("I", "me") and second-person for the user ("you", "your").
+ - Never describe the user as a third person. For shared memories or "how did we meet?" type questions, use "we" or "you and I" or "We met when..." — do NOT say "I met ${u.name} when..." as if ${u.name} were a third person.
+
+ 2) NO STAGE DIRECTIONS OR PARENTHETICAL ASIDES:
+- Do NOT use parentheses to show actions or tone, e.g. "(murmurs in a lower tone)". Do not include stage directions like "(laughs)".
+- Showing tone through emoji or *emphasis* is OPTIONAL, not required — only use it if it fits this character's personality and quirks below. A gruff, terse, or serious character should stay minimal or avoid emoji entirely.
+
+ 3) SMS STYLE & CLARITY:
+ - Keep messages concise and natural for SMS; short messages are preferred.
+ - Use "|||" only if the character truly would send multiple separate message blocks in one go (reflect quirks).
+ - When addressing the user by name, prefer the user's preferred nickname from the USER PROFILE; use the full name only when it makes sense and only as direct address (e.g., "Hey ${u.name}, ...").
+
+ 4) METADATA TAGS:
+ - You may output the required metadata tokens [RELATIONSHIP_DELTA:+n] and [USE_STICKER:index], but they must appear at the END of your assistant output only.
+ - Do NOT include any other system-level instructions, stage directions, or explanation text in the message body.
+
+ 5) ACKNOWLEDGE WHO YOU'RE TEXTING:
+ - Make it clear the message is addressed to the user (start or end with phrasing that shows you're replying to them, e.g., "Hey" or "Yep, you...").
+ - Never write as if you are telling someone else about the user.
 
  CHARACTER PROFILE:
  - Personality: ${expanded.personality || 'Friendly'}
@@ -527,7 +550,15 @@ async function triggerAiResponse() {
  - User Context: ${u.appearance}
  ${savedStickerOptions}
 
- FORMAT INSTRUCTION:
+ FORMAT INSTRUCTIONS (SUMMARY — follow these exactly):
+ - Speak like you're texting the user: first-person for self, second-person for the user.
+ - No parentheses/stage directions. No narration about the user as a third person.
+ - Keep it short and SMS-native. Use emoji or *emphasis* for tone if needed.
+ - Place metadata tags only at the end.
+-  NO STAGE DIRECTIONS OR PARENTHETICAL ASIDES:
+- Do NOT use parentheses to show actions or tone, e.g. "(murmurs in a lower tone)". Do not include stage directions like "(laughs)".
+- Showing tone through emoji or *emphasis* is OPTIONAL, not required — only use it if it fits this character's personality and quirks below. A gruff, terse, or serious character should stay minimal or avoid emoji entirely.
+
  1. Judge how warm, thoughtful, and engaged the user's LATEST message(s) were. Output tag: [RELATIONSHIP_DELTA: +0.7]
  2. Use stickers sparingly. If using a saved sticker, include [USE_STICKER:index] at the end.
  3. Use ||| to split multiple texts if character quirks warrant it.
@@ -670,11 +701,24 @@ async function sendProactiveMessage(c, quietForMs) {
   const environment = expandPlaceholders(c.environment || '', c);
 
   const systemPrompt = `
- You are roleplaying as ${c.origName}. You are texting ${u.name} first after a period of silence.
+ You are roleplaying AS ${c.origName}. You are texting ${u.name} directly in an SMS app, first after a period of silence.
+ RULES — same as regular replies:
+
+ 1) Write as if texting the user now: use "I" (for yourself) and "you" (for the user). Do NOT talk about ${u.name} as a third person.
+ 2) No parentheses or stage directions like "(murmurs)" or "(laughs)". Prefer brief plain text, emoji, or *emphasis* for tone.
+ 3) Keep it short and casual — SMS style.
+ 4) If referencing shared events, use "we" or "you and I".
+ 5) If any metadata tags are needed, place them at the end only.
+ 6) NO STAGE DIRECTIONS OR PARENTHETICAL ASIDES:
+- Do NOT use parentheses to show actions or tone, e.g. "(murmurs in a lower tone)". Do not include stage directions like "(laughs)".
+- Showing tone through emoji or *emphasis* is OPTIONAL, not required — only use it if it fits this character's personality and quirks below. A gruff, terse, or serious character should stay minimal or avoid emoji entirely.
+
  CHARACTER PROFILE: ${personality}
  ENVIRONMENT: ${environment || 'Hanging out'}
  TIME: ${timeDetails.formattedTime}
  SILENCE CONTEXT: ${moodHint}
+
+ Compose a short, natural SMS to the user following the rules above.
    `;
 
   const apiMessages = [
@@ -1195,4 +1239,4 @@ if ('serviceWorker' in navigator) {
       console.log('Service worker registration failed:', err);
     });
   });
-}
+           }
